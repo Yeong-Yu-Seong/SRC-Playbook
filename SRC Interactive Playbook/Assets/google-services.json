@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "523506094253",
+    "firebase_url": "https://mdc-interactiveplaybook-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "mdc-interactiveplaybook",
+    "storage_bucket": "mdc-interactiveplaybook.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523506094253:android:31d4cafe4a0fb4fc58f624",
+        "android_client_info": {
+          "package_name": "com.CultureLab.CARE"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUx7y8yRB5DmkUdTBW_mA24VQaqtZcBEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523506094253:android:92253d7667d1e73d58f624",
+        "android_client_info": {
+          "package_name": "com.CultureLab.CAREPLUS"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUx7y8yRB5DmkUdTBW_mA24VQaqtZcBEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
