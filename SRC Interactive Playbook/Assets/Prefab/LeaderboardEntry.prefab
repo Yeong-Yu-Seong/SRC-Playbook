@@ -53,7 +53,7 @@ MonoBehaviour:
   rankText: {fileID: 4041785764304901698}
   usernameText: {fileID: 7406975772091137138}
   scoreText: {fileID: 3050408603648568826}
-  selfHighlight: {fileID: 0}
+  selfHighlight: {fileID: 8620625898038173040}
 --- !u!1 &2786169206149481502
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,0 +1,256 @@
+{
+  "id": "scenario_malcolm_otter",
+  "title": "Malcolm the 'Last to Come, First to Leave' Otter",
+  "exhibitNumber": "Exhibit 01",
+  "outlineDescription": "Teaches managers how to document employee performance accurately. Includes scenarios of poor performance and how to document these behaviours with factual evidence.",
+  "thumbnailUrl": "Sprites/Scenarios/malcolm_thumbnail",
+  "isPublished": true,
+  "pointsOnCompletion": 50,
+  "pointsPerCorrect": 25,
+  "createdBy": "admin",
+  "lastUpdatedBy": "admin",
+  "lastUpdatedTimestamp": 0,
+  "sceneParts": [
+    {
+      "id": "part_intro",
+      "type": "Narrative",
+      "narrativeText": "You are the supervisor of the Operations Team at the Red Cross.\n\nEvery otter employee is expected to report to work by 9:00 AM.",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_office_morning",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_malcolm_arrives",
+      "type": "Narrative",
+      "narrativeText": "For the past two weeks, Malcolm has been arriving around 10:30 AM every day.\n\nToday, Malcolm walks into the office holding his coffee while the rest of the team is already inside meetings.",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_malcolm_arrives",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_you_notice",
+      "type": "Narrative",
+      "narrativeText": "You notice:\n• No prior notice was given\n• Malcolm immediately starts casual conversations\n• At exactly 6:00 PM, he leaves on time every day\n\nAs supervisor, HR requires you to formally document this performance issue.",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_supervisor_desk",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_hr_notification",
+      "type": "Narrative",
+      "narrativeText": "A HR notification appears on your screen:\n\n\"Reminder: Formal documentation required for repeated attendance issues.\"",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_hr_portal",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_q1_dates",
+      "type": "Question",
+      "narrativeText": "",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_hr_form",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "Task 1: How should you fill in the Incident Details section?",
+      "contextHintText": "HR documentation requires specific, measurable details to be considered valid evidence.",
+      "choices": [
+        {
+          "id": "q1_wrong",
+          "label": "A",
+          "text": "Late very often recently.",
+          "isCorrect": false,
+          "feedbackText": "Too vague. HR documentation requires measurable details such as specific dates and times.",
+          "feedbackTags": [],
+          "feedbackType": "Incorrect"
+        },
+        {
+          "id": "q1_correct",
+          "label": "B",
+          "text": "Employee arrived between 10:20 AM – 10:35 AM from 29 April – 13 May 2026 despite scheduled reporting time of 9:00 AM.",
+          "isCorrect": true,
+          "feedbackText": "Good documentation includes specific dates and timings that can be verified.",
+          "feedbackTags": ["Specificity", "Objectivity"],
+          "feedbackType": "Correct"
+        }
+      ]
+    },
+    {
+      "id": "part_q2_evidence",
+      "type": "Question",
+      "narrativeText": "",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_hr_form_evidence",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "Task 2: What supporting evidence should you attach?",
+      "contextHintText": "Evidence must be objective and verifiable, not based on personal memory.",
+      "choices": [
+        {
+          "id": "q2_wrong",
+          "label": "A",
+          "text": "I remember seeing him late every day.",
+          "isCorrect": false,
+          "feedbackText": "Personal memory is not reliable evidence. Use objective records that can be independently verified.",
+          "feedbackTags": [],
+          "feedbackType": "Incorrect"
+        },
+        {
+          "id": "q2_correct",
+          "label": "B",
+          "text": "Attendance records and meeting logs attached.",
+          "isCorrect": true,
+          "feedbackText": "Always support documentation with objective evidence such as attendance screenshots or system records.",
+          "feedbackTags": ["Evidence", "Professionalism"],
+          "feedbackType": "Correct"
+        }
+      ]
+    },
+    {
+      "id": "part_q3_impact",
+      "type": "Question",
+      "narrativeText": "",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_hr_form_impact",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "Task 3: How should you describe the operational impact?",
+      "contextHintText": "Focus on how the behaviour affects work operations, not on the employee's character.",
+      "choices": [
+        {
+          "id": "q3_wrong",
+          "label": "A",
+          "text": "Malcolm is irresponsible and unmotivated.",
+          "isCorrect": false,
+          "feedbackText": "Avoid personal judgements. Focus on how the behaviour affects work operations rather than attacking character.",
+          "feedbackTags": [],
+          "feedbackType": "Urgent"
+        },
+        {
+          "id": "q3_correct",
+          "label": "B",
+          "text": "Repeated lateness delayed meeting discussions and affected project coordination.",
+          "isCorrect": true,
+          "feedbackText": "Focus on how behaviour affects work operations instead of attacking the employee personally.",
+          "feedbackTags": ["Objectivity", "Professionalism"],
+          "feedbackType": "Correct"
+        }
+      ]
+    },
+    {
+      "id": "part_q4_comments",
+      "type": "Question",
+      "narrativeText": "",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_hr_form_comments",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "Task 4: What should you write in the Manager Comments section?",
+      "contextHintText": "Use neutral and professional wording. Avoid assumptions or emotional language.",
+      "choices": [
+        {
+          "id": "q4_wrong",
+          "label": "A",
+          "text": "Malcolm clearly does not care about work.",
+          "isCorrect": false,
+          "feedbackText": "Avoid assumptions about intent or emotions. Stick to observable, documented facts.",
+          "feedbackTags": [],
+          "feedbackType": "Incorrect"
+        },
+        {
+          "id": "q4_correct",
+          "label": "B",
+          "text": "Employee did not provide prior notice regarding repeated late arrivals.",
+          "isCorrect": true,
+          "feedbackText": "Use neutral and professional wording. Avoid assumptions or emotional language.",
+          "feedbackTags": ["Clarity", "Professionalism"],
+          "feedbackType": "Correct"
+        }
+      ]
+    },
+    {
+      "id": "part_form_complete",
+      "type": "Narrative",
+      "narrativeText": "The HR documentation form is now fully completed.\n\nAll sections have been filled with specific, objective, and professional information.",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_form_complete",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_checklist",
+      "type": "Narrative",
+      "narrativeText": "✔ Include dates and timings\n✔ Focus on observable behaviour\n✔ Attach supporting evidence\n✔ Explain operational impact\n✔ Use professional and neutral wording\n✘ Avoid opinions and assumptions",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_checklist",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_next_step",
+      "type": "Narrative",
+      "narrativeText": "Documentation completed.\n\nNext Step: Conduct employee feedback discussion.\n\nA calendar meeting invitation has been drafted:\n\"Meeting with Malcolm – Attendance Discussion\"",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_calendar",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_feedback_prep",
+      "type": "Narrative",
+      "narrativeText": "Suggested conversation starters:\n\n• \"I noticed you've been arriving after reporting hours recently.\"\n• \"Is there anything affecting your attendance?\"\n• \"I'd like to understand if there are any challenges we should be aware of.\"",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_meeting_prep",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_feedback_questions",
+      "type": "Narrative",
+      "narrativeText": "Questions to explore during the feedback session:\n\n• Are there personal or operational challenges affecting punctuality?\n• Does the employee understand attendance expectations?\n• Is additional support required?\n• What improvement plan can be agreed upon moving forward?",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_meeting_questions",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_resolution",
+      "type": "Narrative",
+      "narrativeText": "Malcolm and the supervisor sit together professionally in a meeting room.\n\nMalcolm appears more serious and attentive while the supervisor speaks calmly.",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_meeting_room",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    },
+    {
+      "id": "part_summary",
+      "type": "Narrative",
+      "narrativeText": "Final Learning Points:\n\n• Document facts, not emotions\n• Use evidence and specific details\n• Explain operational impact clearly\n• Remain objective and professional\n• Conduct respectful feedback discussions",
+      "backgroundImageUrl": "Sprites/Scenarios/Malcolm/bg_summary",
+      "audioUrl": "",
+      "displayDurationSecs": 0,
+      "questionText": "",
+      "contextHintText": "",
+      "choices": []
+    }
+  ]
+}
