@@ -15,6 +15,7 @@ public class FactVsOpinion : MonoBehaviour
     public float score; // Player's score
     public string[] statements; // Array to store statements
     public bool[] isFactArray; // Array to store whether each statement is a fact or opinion
+    private string learningPoints; // String to store the learning points for the current scenario
     [SerializeField]
     public Sprite[] mascotSprites; // Array to store the mascot sprites
     public int questionIndex = 0; // Index to track the current statement
@@ -28,10 +29,12 @@ public class FactVsOpinion : MonoBehaviour
     [Header("Scenario Id 1 Settings")]
     public string[] scenario1Statements; // Array to store statements for scenario 1
     public bool[] scenario1IsFactArray; // Array to store whether each statement in scenario 1 is a fact or opinion
+    public string scenario1LearningPoints; // String to store the learning points for the scenario, which can be displayed to the player at the end of the game.
     [Header("Scenario Id 2 Settings")]
     public string[] scenario2Statements; // Array to store statements for scenario 2
     public bool[] scenario2IsFactArray; // Array to store whether each statement in scenario 2 is a fact or opinion
-    
+    public string scenario2LearningPoints; // String to store the learning points for the scenario, which can be displayed to the player at the end of the game.
+
     [Header("UI References")]
     public TextMeshProUGUI statementText; // Reference to the UI Text component to display statements
     public TextMeshProUGUI questionNumberText; // Reference to the TextMeshProUGUI component to display the question number
@@ -44,6 +47,7 @@ public class FactVsOpinion : MonoBehaviour
     public TextMeshProUGUI pointText; // Reference to the TextMeshProUGUI component to display the points earned
     public TextMeshProUGUI endMessageText; // Reference to the TextMeshProUGUI component to display the end message
     public TextMeshProUGUI endMessageSubText; // Reference to the TextMeshProUGUI component to display the end message subtext
+    public TextMeshProUGUI learningPointsText; // Reference to the TextMeshProUGUI component to display the learning points at the end of the game
     public QuizManager quizManagerInstance; // Reference to the QuizManager instance to access the high score variables
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -82,14 +86,22 @@ public class FactVsOpinion : MonoBehaviour
             case 1:
                 statements = scenario1Statements;
                 isFactArray = scenario1IsFactArray;
+                learningPoints = scenario1LearningPoints;
                 break;
             case 2:
                 statements = scenario2Statements;
                 isFactArray = scenario2IsFactArray;
+                learningPoints = scenario2LearningPoints;
                 break;
             default:
                 Debug.LogError("Invalid scenario ID! Please set a valid scenario ID in the QuizManager.");
                 break;
+        }
+
+        // Check if learning points are provided for the current scenario.
+        if (learningPoints == null)
+        {
+            Debug.LogError("No learning points available for this scenario."); // Set a default message if learning points are not provided for the scenario
         }
 
         // Check if the statements and isFactArray have the same length to avoid errors during gameplay
@@ -109,6 +121,7 @@ public class FactVsOpinion : MonoBehaviour
         // Display the first statement to the player
         statementText.text = statements[questionIndex];
         questionNumberText.text = $"Question: {questionIndex + 1}/{statements.Length}";
+        learningPointsText.text = ""; // Clear the learning points text at the start of the game
         gamePanel.SetActive(true); // Show the game panel
         resultPanel.SetActive(false); // Hide the result panel
     }
@@ -144,5 +157,6 @@ public class FactVsOpinion : MonoBehaviour
         {
             quizManagerInstance.FactVsOpinionHighScores[quizManagerInstance.scenarioId-1] = score; // Update the high score for the Fact vs Opinion quiz in the QuizManager
         }
+        learningPointsText.text = learningPoints; // Display the learning points to the player at the end of the game
     }
 }
