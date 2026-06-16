@@ -1,7 +1,7 @@
 /*
     Author: Yeong Yu Seong
     Date Created: 26 May 2026
-    Last Edited: 12 June 2026
+    Last Edited: 16 June 2026
     Description: This script is used to manage the Multiple Choice Questions game.
 */
 using UnityEngine;
@@ -16,6 +16,7 @@ public class MCQ : MonoBehaviour
     public string[] statements; // Array to store statements
     public string[] answerArray; // Array to store the correct answers for each statement
     public string[] answerExplanationArray; // Array to store the explanations for each answer
+    private string learningPoints; // String to store the learning points for the current scenario
     public string[] optionAArray; // Array to store the text for option A for each statement
     public string[] optionBArray; // Array to store the text for option B for each statement
     public string[] optionCArray; // Array to store the text for option C for each statement
@@ -32,6 +33,7 @@ public class MCQ : MonoBehaviour
     public string[] scenario1OptionBArray; // Array to store the text for option B for each statement in scenario 1
     public string[] scenario1OptionCArray; // Array to store the text for option C for each statement in scenario 1
     public string[] scenario1OptionDArray; // Array to store the text for option D for each statement in scenario 1
+    public string scenario1LearningPoints; // String to store the learning points for scenario 1
     [Header("Scenario Id 2 Settings")]
     public string[] scenario2Statements; // Array to store statements for scenario 2
     public string[] scenario2AnswerArray; // Array to store the correct answers for each statement in scenario 2
@@ -40,6 +42,7 @@ public class MCQ : MonoBehaviour
     public string[] scenario2OptionBArray; // Array to store the text for option B for each statement in scenario 2
     public string[] scenario2OptionCArray; // Array to store the text for option C for each statement in scenario 2
     public string[] scenario2OptionDArray; // Array to store the text for option D for each statement in scenario 2
+    public string scenario2LearningPoints; // String to store the learning points for scenario 2
 
     [SerializeField]
     public int questionIndex = 0; // Index to track the current statement
@@ -50,6 +53,7 @@ public class MCQ : MonoBehaviour
     [Header("UI References")]
     public TextMeshProUGUI statementText; // Reference to the UI Text component to display statements
     public TextMeshProUGUI questionNumberText; // Reference to the TextMeshProUGUI component to display the question number
+    public TextMeshProUGUI answerPanelQuestionNumber; // Reference to the TextMeshProUGUI component to display the question number in the answer panel
     public Image timerCountdown; // Reference to the Image component to display the timer countdown
     public Button[] optionButtons; // Array to store the option buttons for fact and opinion
     public GameObject gamePanel; // Reference to the game panel to show/hide during the game
@@ -66,6 +70,7 @@ public class MCQ : MonoBehaviour
     public TextMeshProUGUI answerText; // Reference to the TextMeshProUGUI component to display the answer message
     public TextMeshProUGUI answerQuestionText; // Reference to the TextMeshProUGUI component to display the question for the answer question
     public Button nextQuestionButton; // Reference to the Button component for the next question button
+    public TextMeshProUGUI learningPointsText; // Reference to the TextMeshProUGUI component to display the learning points at the end of the game
 
     private Coroutine timeToNextQuestionCoroutine; // Coroutine to handle the delay before moving to the next question
     public QuizManager quizManagerInstance; // Reference to the QuizManager instance to access the high score variables
@@ -112,6 +117,7 @@ public class MCQ : MonoBehaviour
                 optionBArray = scenario1OptionBArray;
                 optionCArray = scenario1OptionCArray;
                 optionDArray = scenario1OptionDArray;
+                learningPoints = scenario1LearningPoints;
                 break;
             case 2:
                 statements = scenario2Statements;
@@ -121,10 +127,17 @@ public class MCQ : MonoBehaviour
                 optionBArray = scenario2OptionBArray;
                 optionCArray = scenario2OptionCArray;
                 optionDArray = scenario2OptionDArray;
+                learningPoints = scenario2LearningPoints;
                 break;
             default:
                 Debug.LogError("Invalid scenario ID! Please set a valid scenario ID in the QuizManager."); // Log an error if the scenario ID is invalid
                 break;
+        }
+
+        // Check if learning points are provided for the current scenario.
+        if (learningPoints == null)
+        {
+            Debug.LogError("No learning points available for this scenario."); // Set a default message if learning points are not provided for the scenario
         }
 
         // Check if the statements, answerArray, and answerExplanationArray have the same length to avoid errors during gameplay
@@ -139,18 +152,21 @@ public class MCQ : MonoBehaviour
         timer = 60f; // Reset the timer
         isGameActive = true;
         timerCountdown.fillAmount = timer / 60f; // Display the initial timer value to the player
+
         // Display the first statement to the player
         statementText.text = statements[questionIndex];
         optionAText.text = optionAArray[questionIndex];
         optionBText.text = optionBArray[questionIndex];
         optionCText.text = optionCArray[questionIndex];
         optionDText.text = optionDArray[questionIndex];
+
         foreach (Button button in optionButtons)
         {
             button.interactable = true; // Enable the option buttons for the player to select an answer
         }
-        nextQuestionButton.interactable = true; // Enable the next question button
 
+        nextQuestionButton.interactable = true; // Enable the next question button
+        learningPointsText.text = ""; // Clear the learning points text at the start of the game
         questionNumberText.text = $"Q{questionIndex + 1}/{statements.Length}";
         gamePanel.SetActive(true); // Show the game panel
         resultPanel.SetActive(false); // Hide the result panel
@@ -184,6 +200,7 @@ public class MCQ : MonoBehaviour
         {
             quizManagerInstance.MCQHighScores[quizManagerInstance.scenarioId-1] = score; // Update the high score for the MCQ quiz in the QuizManager
         }
+        learningPointsText.text = learningPoints; // Display the learning points to the player at the end of the game
     }
     
     /// <summary>
