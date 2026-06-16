@@ -1,7 +1,7 @@
 /*
     Author: Yeong Yu Seong
     Date Created: 26 May 2026
-    Last Edited: 12 June 2026
+    Last Edited: 16 June 2026
     Description: This script is used to manage the Multiple Choice Questions game.
 */
 using UnityEngine;
@@ -44,6 +44,7 @@ public class MCQOptions : MonoBehaviour
         mcqScript.gamePanel.SetActive(false); // Hide the game panel to show the answer panel
         mcqScript.answerPanel.SetActive(true); // Show the answer panel to display the correct answer or wrong answer message
         mcqScript.answerQuestionText.text = $"{mcqScript.statements[mcqScript.questionIndex]}"; // Set the question text for the answer panel
+        mcqScript.answerPanelQuestionNumber.text = $"Q{mcqScript.questionIndex+1}/{mcqScript.statements.Length}"; // Set the question number text for the answer panel
         mcqScript.answerText.text = $"Correct answer: {mcqScript.answerArray[mcqScript.questionIndex]}\nExplanation: {mcqScript.answerExplanationArray[mcqScript.questionIndex]}"; // Set the answer text to display the correct answer and explanation
     }
 

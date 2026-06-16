@@ -1,7 +1,7 @@
 /*
     Author: Yeong Yu Seong
     Date Created: 25 May 2026
-    Last Edited: 12 June 2026
+    Last Edited: 16 June 2026
     Description: This script is used to manage the options for the Fact vs Opinion game.
 */
 using UnityEngine;
@@ -56,7 +56,7 @@ public class FactVsOpinionOptions : MonoBehaviour
     private void CheckAnswer(bool isFact)
     {
         factVsOpinionScript.mascotImage.sprite = factVsOpinionScript.mascotSprites[1]; // Set the mascot image
-        factVsOpinionScript.mascotImage.GetComponent<RectTransform>().sizeDelta = new Vector2(90, 150); // Set the width of the mascot image
+
         if (isFact == factVsOpinionScript.isFactArray[factVsOpinionScript.questionIndex])
         {
             ColorUtility.TryParseHtmlString("#5EC97F", out Color correctColor); // Change the color of the button to hex 5EC97F if the answer is correct
@@ -96,7 +96,7 @@ public class FactVsOpinionOptions : MonoBehaviour
         }
         timeToNextQuestionCoroutine = null; // Reset the coroutine reference to null after moving to the next question
         factVsOpinionScript.mascotImage.sprite = factVsOpinionScript.mascotSprites[0]; // Set the mascot image to the default sprite
-        factVsOpinionScript.mascotImage.GetComponent<RectTransform>().sizeDelta = new Vector2(100, 150); // Set the size of the mascot image to the default size
+        
         foreach (Button button in factVsOpinionScript.optionButtons)
         {
             button.interactable = true; // Re-enable the option buttons for the next question

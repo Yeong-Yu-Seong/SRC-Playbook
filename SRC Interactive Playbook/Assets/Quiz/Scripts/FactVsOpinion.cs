@@ -98,7 +98,7 @@ public class FactVsOpinion : MonoBehaviour
                 break;
         }
 
-        // Check if learning points are provided for the current scenario.
+        // Check if learning points are provided for the current scenario. If not, log an error message to ensure that the player receives feedback at the end of the game, even if specific learning points have not been defined for the current scenario.
         if (learningPoints == null)
         {
             Debug.LogError("No learning points available for this scenario."); // Set a default message if learning points are not provided for the scenario

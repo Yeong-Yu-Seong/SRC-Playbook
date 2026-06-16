@@ -1,7 +1,7 @@
 /*
     Author: Yeong Yu Seong
     Date Created: 26 May 2026
-    Last Edited: 12 June 2026
+    Last Edited: 16 June 2026
     Description: This script is used to manage the Multiple Choice Questions game.
 */
 using UnityEngine;
@@ -53,6 +53,7 @@ public class MCQ : MonoBehaviour
     [Header("UI References")]
     public TextMeshProUGUI statementText; // Reference to the UI Text component to display statements
     public TextMeshProUGUI questionNumberText; // Reference to the TextMeshProUGUI component to display the question number
+    public TextMeshProUGUI answerPanelQuestionNumber; // Reference to the TextMeshProUGUI component to display the question number in the answer panel
     public Image timerCountdown; // Reference to the Image component to display the timer countdown
     public Button[] optionButtons; // Array to store the option buttons for fact and opinion
     public GameObject gamePanel; // Reference to the game panel to show/hide during the game
