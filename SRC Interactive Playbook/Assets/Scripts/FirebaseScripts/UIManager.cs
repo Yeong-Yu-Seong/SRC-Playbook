@@ -13,12 +13,13 @@ public class UIManager : MonoBehaviour
 
     // ── Canvas name constants ──────────────────────────────────
     [Header("Canvas GameObject names — must match Hierarchy exactly")]
-    [SerializeField] private string _signInCanvasName = "SignInCanvas";  // root canvas
-    [SerializeField] private string _landingName = "LandingPage";
-    [SerializeField] private string _loginName = "LoginCanvas";
-    [SerializeField] private string _signupName = "SignUpCanvas";
-    [SerializeField] private string _homepageName = "Homepage";
-    [SerializeField] private string _leaderboardName = "LeaderboardCanvas";
+    [SerializeField] private string _landingName = "LandingPagePanel";
+    [SerializeField] private string _loginName = "LoginPanel";
+    [SerializeField] private string _signupName = "SignUpPanel";
+    [SerializeField] private string _homepageName = "HomepagePanel";
+    [SerializeField] private string _leaderboardName = "LeaderboardPanel";
+    [SerializeField] private string _cheatsheetName = "CheatsheetPanel";
+    [SerializeField] private string _profileName = "ProfilePanel";
     [SerializeField] private string _homeSceneName = "HomeScene";
 
     // ── Live references (re-resolved on every HomeScene load) ──
@@ -27,6 +28,8 @@ public class UIManager : MonoBehaviour
     private GameObject _signupPanel;
     private GameObject _homepagePanel;
     private GameObject _leaderboardPanel;
+    private GameObject _cheatsheetPanel;
+    private GameObject _profilePanel;
 
     // ══════════════════════════════════════════════════════════
     // Lifecycle
@@ -128,6 +131,8 @@ public class UIManager : MonoBehaviour
         _signupPanel = FindInScene(_signupName);
         _homepagePanel = FindInScene(_homepageName);
         _leaderboardPanel = FindInScene(_leaderboardName);
+        _cheatsheetPanel = FindInScene(_cheatsheetName);
+        _profilePanel = FindInScene(_profileName);
     }
 
     private GameObject FindInScene(string goName)
@@ -172,6 +177,8 @@ public class UIManager : MonoBehaviour
         Set(_signupPanel, active);
         Set(_homepagePanel, active);
         Set(_leaderboardPanel, active);
+        Set(_cheatsheetPanel, active);
+        Set(_profilePanel, active);
     }
 
     private void Set(GameObject panel, bool active)
