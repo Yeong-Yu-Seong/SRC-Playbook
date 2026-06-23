@@ -12,6 +12,8 @@ namespace RedCross.Playbook.UI
         [SerializeField] private GameObject signUpPanel;
         [SerializeField] private GameObject loginPanel;
         [SerializeField] private GameObject leaderboardPanel;
+        [SerializeField] private GameObject cheatsheetPanel;
+        [SerializeField] private GameObject profilePanel;
 
         // ── Inspector: Text fields ─────────────────────────────────
         [Header("Homepage text fields")]
@@ -108,6 +110,8 @@ namespace RedCross.Playbook.UI
             if (signUpPanel != null) signUpPanel.SetActive(false);
             if (loginPanel != null) loginPanel.SetActive(false);
             if (leaderboardPanel != null) leaderboardPanel.SetActive(false);
+            if (cheatsheetPanel != null) cheatsheetPanel.SetActive(false);
+            if (profilePanel != null) profilePanel.SetActive(false);
         }
 
         private void ApplyUserToUI(User user)

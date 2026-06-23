@@ -9,22 +9,6 @@
 //     NarrativePartUI  →  QuestionPartUI  →  FeedbackUI  →  repeat
 //   At the end: ScenarioCompleteUI + saves progress + awards points.
 // ============================================================
-// ============================================================
-// ScenarioManager.cs  —  Red Cross Playbook
-//
-// FIXES IN THIS VERSION:
-// 1. ScenarioManager no longer uses DontDestroyOnLoad.
-//    It must live in ScenarioScene only. HomeScene should NOT
-//    have a ScenarioManager at all.
-//
-// 2. UI panel references must be scene Hierarchy instances,
-//    NOT prefab assets. Drag from Hierarchy, not Project panel.
-//
-// 3. StartScenario(string id) is now also callable with no
-//    argument — it reads from ScenarioSceneBootstrapper instead,
-//    so the Enter button in ScenarioIntroUI can call it directly
-//    via the Inspector OnClick() without passing a string.
-// ============================================================
 
 using System;
 using System.Collections;
@@ -178,6 +162,7 @@ namespace RedCross.Playbook.Scenario
 
         private void ShowIntro()
         {
+            UIManager.Instance.GetNavBar()?.ShowNavBar();
             introUI.Show(_scenario, onEnterClicked: () =>
             {
                 introUI.Hide();
@@ -298,6 +283,7 @@ namespace RedCross.Playbook.Scenario
             _pointsEarned = 0;
             _isRunning = false;
             _answeredChoiceIds = new List<string>();
+            completeUI.Hide();
         }
 
         private void CountQuestions()

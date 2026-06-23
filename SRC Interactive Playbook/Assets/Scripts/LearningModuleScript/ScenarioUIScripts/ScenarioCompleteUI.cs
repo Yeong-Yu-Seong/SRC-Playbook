@@ -21,8 +21,20 @@ public class ScenarioCompleteUI : MonoBehaviour
 
     private void Awake()
     {
-        homeButton.onClick.AddListener(() => _onHome?.Invoke());
-        replayButton.onClick.AddListener(() => _onReplay?.Invoke());
+        // Validate and wire homeButton
+        if (homeButton != null)
+            homeButton.onClick.AddListener(() => _onHome?.Invoke());
+        else
+            Debug.LogError("[ScenarioCompleteUI] homeButton is not assigned in the Inspector. " +
+                           "Drag the Home button from this panel's Hierarchy into the slot.");
+
+        // Validate and wire replayButton
+        if (replayButton != null)
+            replayButton.onClick.AddListener(() => _onReplay?.Invoke());
+        else
+            Debug.LogError("[ScenarioCompleteUI] replayButton is not assigned in the Inspector. " +
+                           "Drag the Retry/Replay button from this panel's Hierarchy into the slot.");
+
     }
 
     public void Show(UserScenarioProgress progress, PlaybookScenario scenario,
