@@ -22,10 +22,7 @@ namespace RedCross.Playbook.UI
 
         [Tooltip("Shows total score in pts")]
         [SerializeField] private TextMeshProUGUI scoreText;
-
-        [Tooltip("Optional — simulation score only")]
-        [SerializeField] private TextMeshProUGUI simulationScoreText;
-
+  
         // ── Inspector: Scenario list ───────────────────────────────
         [Header("Scenario list (refreshes completed badges on return)")]
         [SerializeField] private ScenarioListUI scenarioListUI;
@@ -36,14 +33,12 @@ namespace RedCross.Playbook.UI
 
         private void Start()
         {
-            // Subscribe to UserManager so any score change updates the UI
             if (UserManager.Instance != null)
                 UserManager.Instance.OnUserUpdated += OnUserUpdated;
             else
                 Debug.LogWarning("[HomepageUIManager] UserManager.Instance not found. " +
                                  "Make sure UserManager is initialised before HomepageUIManager.");
 
-            // Subscribe to PointsManager for live in-scenario updates
             if (RedCross.Playbook.Scenario.PointsManager.Instance != null)
                 RedCross.Playbook.Scenario.PointsManager.Instance.OnTotalPointsChanged += OnTotalPointsChanged;
         }
@@ -65,22 +60,19 @@ namespace RedCross.Playbook.UI
         }
 
         // ══════════════════════════════════════════════════════════
-        // Refresh — called on OnEnable and whenever user data changes
+        // Refresh
         // ══════════════════════════════════════════════════════════
 
         public void RefreshHomepage()
         {
-            // 1. Force correct panel visibility
             ShowHomepagePanel();
 
-            // 2. Populate from UserManager (already loaded by FirebaseManager at login)
             if (UserManager.Instance?.CurrentUser != null)
                 ApplyUserToUI(UserManager.Instance.CurrentUser);
             else
                 Debug.LogWarning("[HomepageUIManager] CurrentUser is null — " +
                                  "display name and score will be blank until login completes.");
 
-            // 3. Refresh exhibit cards so completed badges update
             if (scenarioListUI != null)
                 scenarioListUI.RefreshList();
         }
@@ -89,10 +81,8 @@ namespace RedCross.Playbook.UI
         // Event handlers
         // ══════════════════════════════════════════════════════════
 
-        // Fires after login and after every Firebase score write
         private void OnUserUpdated(User user) => ApplyUserToUI(user);
 
-        // Fires live during a scenario (per correct answer)
         private void OnTotalPointsChanged(int total)
         {
             if (scoreText != null)
@@ -121,10 +111,6 @@ namespace RedCross.Playbook.UI
 
             if (scoreText != null)
                 scoreText.text = $"{user.score} pts";
-
-            if (simulationScoreText != null)
-                simulationScoreText.text = $"{user.simulationScore} pts";
-
             Debug.Log($"[HomepageUIManager] UI updated — " +
                       $"user: {user.username}, score: {user.score}");
         }

@@ -1,73 +1,56 @@
-﻿// ══════════════════════════════════════════════════════════════
-// ExhibitCardUI — one card in the gallery (Image 1 style)
-// ══════════════════════════════════════════════════════════════
-
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
-using UnityEngine.SceneManagement;
-using RedCross.Playbook.Data;
+﻿using RedCross.Playbook.Data;
 using RedCross.Playbook.Firebase;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using System.Collections;           // ← needed for IEnumerator (Option B)
+// using DG.Tweening;               // ← uncomment this instead if DOTween is installed
 
 namespace RedCross.Playbook.UI
 {
     public class ExhibitCardUI : MonoBehaviour
     {
-        // ── Inspector slots ────────────────────────────────────────
         [Header("Text Fields")]
         [SerializeField] private TextMeshProUGUI exhibitNumberText;
-        [SerializeField] private TextMeshProUGUI titleText;
-        [SerializeField] private TextMeshProUGUI descriptionText;
-        [SerializeField] private TextMeshProUGUI pointsText;         // e.g. "+ 50 pts"
+        [SerializeField] private TextMeshProUGUI pointsText;
 
         [Header("Image")]
         [SerializeField] private RawImage thumbnail;
 
         [Header("Buttons & Badges")]
-        [SerializeField] private Button enterButton;             // "Enter Exhibit" / "View"
-        [SerializeField] private GameObject completedBadge;         // Green tick — optional
+        [SerializeField] private GameObject completedBadge;
+        [SerializeField] private Button frameButton;
 
         [Header("Scene")]
         [Tooltip("Must match the exact scene name in File → Build Settings.")]
         [SerializeField] private string scenarioSceneName = "ScenarioScene";
 
-        // ── Runtime ────────────────────────────────────────────────
         private string _scenarioId;
-
-        // ══════════════════════════════════════════════════════════
-        // Setup
-        // ══════════════════════════════════════════════════════════
+        private ScenarioIndexEntry _entry;
 
         private void Awake()
         {
-            if (enterButton != null)
-                enterButton.onClick.AddListener(OnEnterClicked);
-            else
-                Debug.LogWarning($"[ExhibitCardUI] enterButton is not assigned on {gameObject.name}. " +
-                                 "Drag the button into the Enter Button slot in the Inspector.");
+            if (frameButton != null)
+                frameButton.onClick.AddListener(OnFrameTapped);
         }
 
-        // Called by ScenarioListUI after instantiating the card prefab
         public void Initialise(ScenarioIndexEntry entry, System.Action<string> onTapped = null)
         {
+            _entry = entry;
             _scenarioId = entry.id;
 
             if (exhibitNumberText != null) exhibitNumberText.text = entry.exhibitNumber;
-            if (titleText != null) titleText.text = entry.title;
-            if (descriptionText != null) descriptionText.text = entry.outlineDescription;
-            if (pointsText != null) pointsText.text = $"+ {entry.pointsOnCompletion} pts";
+            if (pointsText != null) pointsText.text = $"+{entry.pointsOnCompletion}";
 
-            // Load thumbnail from Resources (no extension)
             if (thumbnail != null && !string.IsNullOrEmpty(entry.thumbnailUrl))
             {
                 var tex = Resources.Load<Texture2D>(entry.thumbnailUrl);
                 if (tex != null) thumbnail.texture = tex;
             }
 
-            // Show completed badge if this user has already finished the scenario
             string userId = PlayerPrefs.GetString("userId", "guest");
-            FirebaseScenarioService.Instance.FetchUserProgress(
-                userId, entry.id,
+            FirebaseScenarioService.Instance.FetchUserProgress(userId, entry.id,
                 progress =>
                 {
                     if (completedBadge != null)
@@ -75,28 +58,59 @@ namespace RedCross.Playbook.UI
                 });
         }
 
-        // ══════════════════════════════════════════════════════════
-        // Button handler
-        // ══════════════════════════════════════════════════════════
         private void OnEnterClicked()
         {
             if (string.IsNullOrEmpty(_scenarioId))
             {
-                Debug.LogError("[ExhibitCardUI] _scenarioId is empty. " +
-                               "Was Initialise() called on this card?");
+                Debug.LogError("[ExhibitCardUI] _scenarioId is empty. Was Initialise() called?");
                 return;
             }
 
             Debug.Log($"[ExhibitCardUI] Loading scenario: {_scenarioId}");
-
-            // ── Two-channel handoff to ScenarioSceneBootstrapper ──
-            // Static field: survives scene load in the same process
             ScenarioSceneBootstrapper.PendingScenarioId = _scenarioId;
-            // PlayerPrefs: fallback for edge cases / deep links
             PlayerPrefs.SetString("pendingScenarioId", _scenarioId);
             PlayerPrefs.Save();
-
             SceneManager.LoadScene(scenarioSceneName);
+        }
+
+        private void OnFrameTapped()
+        {
+            // Option B — coroutine punch scale (no DOTween needed)
+            StartCoroutine(PunchScale());
+
+            // Option A — uncomment below and delete the line above if DOTween is installed
+            // transform.DOPunchScale(Vector3.one * 0.04f, 0.25f, 1, 0.5f);
+
+            InfoOverlayUI.Instance.Show(_entry, OnEnterClicked);
+        }
+
+        // ── Coroutine: quick scale punch (replaces DOPunchScale) ──
+        private IEnumerator PunchScale()
+        {
+            Vector3 original = transform.localScale;
+            Vector3 punched = original * 1.04f;
+            float duration = 0.12f;
+            float elapsed = 0f;
+
+            // Scale up
+            while (elapsed < duration)
+            {
+                transform.localScale = Vector3.Lerp(original, punched, elapsed / duration);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            elapsed = 0f;
+
+            // Scale back down
+            while (elapsed < duration)
+            {
+                transform.localScale = Vector3.Lerp(punched, original, elapsed / duration);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            transform.localScale = original;
         }
     }
 }

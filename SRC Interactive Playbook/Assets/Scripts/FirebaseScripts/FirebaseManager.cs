@@ -6,11 +6,12 @@
 
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 using Firebase;
 using Firebase.Auth;
 using Firebase.Database;
-using Firebase.Extensions;          // ContinueWithOnMainThread
+using Firebase.Extensions;
+using RedCross.Playbook.Data;
+using UnityEngine;
 
 public class FirebaseManager : MonoBehaviour
 {
@@ -18,12 +19,11 @@ public class FirebaseManager : MonoBehaviour
     public static FirebaseManager Instance { get; private set; }
 
     // ── Internal state ─────────────────────────────────────────────────────────
-    private FirebaseAuth      _auth;
+    private FirebaseAuth _auth;
     private DatabaseReference _db;
-    private bool              _isInitialized;
+    private bool _isInitialized;
 
-    // ── Convenience accessors ──────────────────────────────────────────────────
-    public bool   IsInitialized => _isInitialized;
+    public bool IsInitialized => _isInitialized;
     public string CurrentUserId => _auth?.CurrentUser?.UserId;
 
     private bool IsAuthenticated =>
@@ -36,68 +36,49 @@ public class FirebaseManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
+        else Destroy(gameObject);
     }
 
     private void Start()
     {
-        // Verify Firebase dependencies before touching any Firebase API
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
         {
             if (task.Result == DependencyStatus.Available)
             {
-                _auth           = FirebaseAuth.DefaultInstance;
-                _db             = FirebaseDatabase.DefaultInstance.RootReference;
-                _isInitialized  = true;
-                Debug.Log("[FirebaseManager] Initialized successfully.");
+                _auth = FirebaseAuth.DefaultInstance;
+                _db = FirebaseDatabase.DefaultInstance.RootReference;
+                _isInitialized = true;
+                Debug.Log("[FirebaseManager] Initialized.");
             }
             else
             {
-                Debug.LogError($"[FirebaseManager] Could not resolve Firebase dependencies: {task.Result}");
+                Debug.LogError($"[FirebaseManager] Dependency error: {task.Result}");
             }
         });
     }
 
-    private void OnApplicationQuit() => SetUserOffline();
+    // OnApplicationQuit: no longer calls SetUserOffline — isLoggedIn is removed.
+    // Firebase Auth state is the source of truth for session presence.
 
     // ══════════════════════════════════════════════════════════════════════════
     //  AUTHENTICATION — SIGN-UP
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Creates a Firebase Auth account and writes a new User document to the database.
-    /// </summary>
-    /// <param name="username">Display name chosen by the learner.</param>
-    /// <param name="email">Email address used as the auth credential.</param>
-    /// <param name="password">Password (min 6 chars, enforced by Firebase).</param>
-    /// <param name="onSuccess">Invoked after both auth and database writes succeed.</param>
-    /// <param name="onError">Invoked with a human-readable message on any failure.</param>
     public void SignUp(string username, string email, string password,
                        Action onSuccess, Action<string> onError)
     {
-        if (!_isInitialized) { onError("Firebase not ready. Please wait."); return; }
+        if (!_isInitialized) { onError("Firebase not ready."); return; }
 
         FirebaseAuth.DefaultInstance
             .CreateUserWithEmailAndPasswordAsync(email, password)
-            .ContinueWithOnMainThread(authTask =>
+            .ContinueWithOnMainThread(task =>
             {
-                if (authTask.IsCanceled || authTask.IsFaulted)
+                if (task.IsCanceled || task.IsFaulted)
                 {
-                    string msg = authTask.Exception?.GetBaseException().Message ?? "Sign-up failed.";
-                    Debug.LogError($"[FirebaseManager] SignUp auth error: {msg}");
-                    onError(msg);
+                    onError(task.Exception?.GetBaseException().Message ?? "Sign-up failed.");
                     return;
                 }
-
-                // Auth account created — now write the User profile
                 CreateUserDocument(username, email, onSuccess, onError);
             });
     }
@@ -106,33 +87,24 @@ public class FirebaseManager : MonoBehaviour
     //  AUTHENTICATION — LOGIN
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Signs the user in via Firebase Auth and loads their User document.
-    /// </summary>
     public void Login(string email, string password,
                       Action<User> onSuccess, Action<string> onError)
     {
-        if (!_isInitialized) { onError("Firebase not ready. Please wait."); return; }
+        if (!_isInitialized) { onError("Firebase not ready."); return; }
 
         FirebaseAuth.DefaultInstance
             .SignInWithEmailAndPasswordAsync(email, password)
-            .ContinueWithOnMainThread(authTask =>
+            .ContinueWithOnMainThread(task =>
             {
-                if (authTask.IsCanceled || authTask.IsFaulted)
+                if (task.IsCanceled || task.IsFaulted)
                 {
-                    string msg = authTask.Exception?.GetBaseException().Message ?? "Login failed.";
-                    Debug.LogError($"[FirebaseManager] Login error: {msg}");
-                    onError(msg);
+                    onError(task.Exception?.GetBaseException().Message ?? "Login failed.");
                     return;
                 }
 
-                // Mark user online and refresh lastLoginAt
-                UpdateUserField("isLoggedIn", true,  () => { }, _ => { });
                 UpdateUserField("lastLoginAt",
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    () => { }, _ => { });
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(), () => { }, _ => { });
 
-                // Load full profile
                 LoadUserDocument(onSuccess, onError);
             });
     }
@@ -141,10 +113,8 @@ public class FirebaseManager : MonoBehaviour
     //  AUTHENTICATION — LOGOUT
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Signs the current user out of Firebase Auth.</summary>
     public void Logout(Action onSuccess = null, Action<string> onError = null)
     {
-        SetUserOffline();
         FirebaseAuth.DefaultInstance.SignOut();
         Debug.Log("[FirebaseManager] User signed out.");
         onSuccess?.Invoke();
@@ -154,20 +124,21 @@ public class FirebaseManager : MonoBehaviour
     //  DATABASE — USER DOCUMENT
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Writes a brand-new User document for the currently authenticated user.</summary>
     public void CreateUserDocument(string username, string email,
                                    Action onSuccess, Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
 
-        User newUser       = new User(username, email);
-        newUser.isLoggedIn = true;
-        newUser.lastLoginAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var newUser = new User(username, email)
+        {
+            lastLoginAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            createdAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            score = 0
+        };
 
         WriteUserJson(newUser, onSuccess, onError);
     }
 
-    /// <summary>Loads the full User document for the currently authenticated user.</summary>
     public void LoadUserDocument(Action<User> onSuccess, Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
@@ -183,30 +154,20 @@ public class FirebaseManager : MonoBehaviour
                }
 
                DataSnapshot snap = task.Result;
-               if (!snap.Exists)
-               {
-                   onError("User data not found in database.");
-                   return;
-               }
+               if (!snap.Exists) { onError("User data not found."); return; }
 
                User user = JsonUtility.FromJson<User>(snap.GetRawJsonValue());
-               Debug.Log($"[FirebaseManager] Loaded user: {user.username} | Score: {user.score}");
+               Debug.Log($"[FirebaseManager] Loaded: {user.username} | Score: {user.score}");
                onSuccess(user);
            });
     }
 
-    /// <summary>Overwrites the entire User document with the supplied object.</summary>
     public void SaveUserDocument(User user, Action onSuccess, Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
         WriteUserJson(user, onSuccess, onError);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  DATABASE — FIELD-LEVEL UPDATES
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /// <summary>Updates a single top-level field on the current user's document.</summary>
     public void UpdateUserField(string fieldName, object value,
                                 Action onSuccess, Action<string> onError)
     {
@@ -221,25 +182,14 @@ public class FirebaseManager : MonoBehaviour
                    HandleTaskError(task, $"UpdateUserField({fieldName})", onError);
                    return;
                }
-               Debug.Log($"[FirebaseManager] Field '{fieldName}' updated.");
                onSuccess();
            });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  SCORING — SIMULATION (Choose Your Next Step)
+    //  SCORING — SIMULATION
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Records the completion of a branching-story simulation, adds the earned
-    /// points to simulationScore and total score, and persists everything.
-    /// Call this at the end of each simulation branch resolution.
-    /// </summary>
-    /// <param name="simulationId">Unique ID of the simulation (e.g. "sim_feedback_01").</param>
-    /// <param name="pointsEarned">Points the player earned in this run.</param>
-    /// <param name="currentUser">The in-memory User object (will be mutated and saved).</param>
-    /// <param name="onSuccess">Returns the updated User after save.</param>
-    /// <param name="onError">Error callback.</param>
     public void RecordSimulationCompletion(string simulationId, int pointsEarned,
                                            User currentUser,
                                            Action<User> onSuccess,
@@ -247,50 +197,180 @@ public class FirebaseManager : MonoBehaviour
     {
         if (!AssertAuthenticated(onError)) return;
 
-        // Mutate in-memory object
-        currentUser.simulationScore += pointsEarned;
-        currentUser.score           += pointsEarned;
-        currentUser.completedSimulations.Add(new CompletedModule(simulationId, pointsEarned));
+        currentUser.score += pointsEarned;
 
-        Debug.Log($"[FirebaseManager] Simulation '{simulationId}' completed. " +
-                  $"+{pointsEarned} pts → total: {currentUser.score}");
+        var completionEntry = new Dictionary<string, object>
+        {
+            { "moduleId",     simulationId },
+            { "moduleType",   "scenario" },
+            { "completedAt",  DateTimeOffset.UtcNow.ToUnixTimeSeconds() },
+            { "pointsEarned", pointsEarned }
+        };
 
-        // Persist
-        WriteUserJson(currentUser,
-            onSuccess: () => onSuccess(currentUser),
-            onError:   onError);
+        // Push generates a unique key — safe append, safe delete, no read needed.
+        DatabaseReference pushRef =
+            _db.Child("users").Child(CurrentUserId)
+               .Child("completedSimulations").Push();
+
+        pushRef.SetValueAsync(completionEntry).ContinueWithOnMainThread(pushTask =>
+        {
+            if (pushTask.IsCanceled || pushTask.IsFaulted)
+            {
+                HandleTaskError(pushTask, "RecordSimulationCompletion (push)", onError);
+                return;
+            }
+
+            // Update the single score field
+            _db.Child("users").Child(CurrentUserId).Child("score")
+               .SetValueAsync(currentUser.score)
+               .ContinueWithOnMainThread(scoreTask =>
+               {
+                   if (scoreTask.IsCanceled || scoreTask.IsFaulted)
+                   {
+                       HandleTaskError(scoreTask, "RecordSimulationCompletion (score)", onError);
+                       return;
+                   }
+
+                   Debug.Log($"[FirebaseManager] Simulation '{simulationId}' saved. " +
+                             $"Score: {currentUser.score}");
+                   onSuccess(currentUser);
+               });
+        });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  SCORING — QUIZ (Facts vs Opinions / MCQ / Drag-and-Drop)
+    //  SCORING — QUIZ
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Records the completion of any assessment quiz format, awards points,
-    /// and persists the updated User document.
-    /// </summary>
-    /// <param name="quizId">Unique ID of the quiz (e.g. "quiz_mcq_module2").</param>
-    /// <param name="pointsEarned">Points based on correct answers.</param>
-    /// <param name="currentUser">The in-memory User object (will be mutated and saved).</param>
-    /// <param name="onSuccess">Returns the updated User after save.</param>
-    /// <param name="onError">Error callback.</param>
     public void RecordQuizCompletion(string quizId, int pointsEarned,
+                                     int correctAnswers, int totalQuestions,
+                                     Dictionary<string, string> answers,
                                      User currentUser,
                                      Action<User> onSuccess,
                                      Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
 
-        currentUser.quizScore += pointsEarned;
-        currentUser.score     += pointsEarned;
-        currentUser.completedQuizzes.Add(new CompletedModule(quizId, pointsEarned));
+        // writes to playbook/quiz_progress/{uid}/{quizId}
+        currentUser.score += pointsEarned;
 
-        Debug.Log($"[FirebaseManager] Quiz '{quizId}' completed. " +
-                  $"+{pointsEarned} pts → total: {currentUser.score}");
+        var quizProgressEntry = new Dictionary<string, object>
+        {
+            { "completed",      true },
+            { "completedAt",    DateTimeOffset.UtcNow.ToUnixTimeSeconds() },
+            { "score",          pointsEarned },
+            { "correctAnswers", correctAnswers },
+            { "totalQuestions", totalQuestions },
+            { "answers",        answers ?? new Dictionary<string, string>() }
+        };
 
-        WriteUserJson(currentUser,
-            onSuccess: () => onSuccess(currentUser),
-            onError:   onError);
+        // Write quiz_progress
+        _db.Child("playbook").Child("quiz_progress")
+           .Child(CurrentUserId).Child(quizId)
+           .SetValueAsync(quizProgressEntry)
+           .ContinueWithOnMainThread(qpTask =>
+           {
+               if (qpTask.IsCanceled || qpTask.IsFaulted)
+               {
+                   HandleTaskError(qpTask, "RecordQuizCompletion (quiz_progress)", onError);
+                   return;
+               }
+
+               // Push completion record onto user (same pattern as simulation)
+               var completionEntry = new Dictionary<string, object>
+               {
+                   { "moduleId",     quizId },
+                   { "moduleType",   "quiz" },
+                   { "completedAt",  DateTimeOffset.UtcNow.ToUnixTimeSeconds() },
+                   { "pointsEarned", pointsEarned }
+               };
+
+               _db.Child("users").Child(CurrentUserId)
+                  .Child("completedSimulations").Push()
+                  .SetValueAsync(completionEntry)
+                  .ContinueWithOnMainThread(pushTask =>
+                  {
+                      if (pushTask.IsCanceled || pushTask.IsFaulted)
+                      {
+                          HandleTaskError(pushTask, "RecordQuizCompletion (push)", onError);
+                          return;
+                      }
+
+                      // Update single score field
+                      _db.Child("users").Child(CurrentUserId).Child("score")
+                         .SetValueAsync(currentUser.score)
+                         .ContinueWithOnMainThread(scoreTask =>
+                         {
+                             if (scoreTask.IsCanceled || scoreTask.IsFaulted)
+                             {
+                                 HandleTaskError(scoreTask, "RecordQuizCompletion (score)", onError);
+                                 return;
+                             }
+
+                             Debug.Log($"[FirebaseManager] Quiz '{quizId}' saved. " +
+                                       $"Score: {currentUser.score}");
+                             onSuccess(currentUser);
+                         });
+                  });
+           });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CHEATSHEET ACCESS TRACKING (NEW)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Call this when a user scans an AR QR code and the cheatsheet opens.
+    /// Writes to playbook/cheatsheet_access/{uid}/{cheatsheetId}.
+    /// </summary>
+    public void RecordCheatsheetAccess(string cheatsheetId,
+                                       Action onSuccess = null,
+                                       Action<string> onError = null)
+    {
+        if (!AssertAuthenticated(onError ?? (_ => { }))) return;
+
+        DatabaseReference accessRef =
+            _db.Child("playbook").Child("cheatsheet_access")
+               .Child(CurrentUserId).Child(cheatsheetId);
+
+        // Read existing entry to increment accessCount
+        accessRef.GetValueAsync().ContinueWithOnMainThread(getTask =>
+        {
+            if (getTask.IsCanceled || getTask.IsFaulted)
+            {
+                HandleTaskError(getTask, "RecordCheatsheetAccess (read)", onError ?? (_ => { }));
+                return;
+            }
+
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            int accessCount = 1;
+            long firstAccess = now;
+
+            if (getTask.Result.Exists)
+            {
+                var snap = getTask.Result;
+                accessCount = (int)(long)(snap.Child("accessCount").Value ?? 0L) + 1;
+                firstAccess = (long)(snap.Child("firstAccessedAt").Value ?? now);
+            }
+
+            var entry = new Dictionary<string, object>
+            {
+                { "firstAccessedAt", firstAccess },
+                { "lastAccessedAt",  now },
+                { "accessCount",     accessCount }
+            };
+
+            accessRef.SetValueAsync(entry).ContinueWithOnMainThread(setTask =>
+            {
+                if (setTask.IsCanceled || setTask.IsFaulted)
+                {
+                    HandleTaskError(setTask, "RecordCheatsheetAccess (write)", onError ?? (_ => { }));
+                    return;
+                }
+                Debug.Log($"[FirebaseManager] Cheatsheet '{cheatsheetId}' access #{accessCount} recorded.");
+                onSuccess?.Invoke();
+            });
+        });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -298,9 +378,46 @@ public class FirebaseManager : MonoBehaviour
     // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Fetches all user documents and returns them as a dictionary keyed by UID.
-    /// Used by LeaderboardManager to render the ranked list.
+    /// Fetches the top N users ordered by score directly from users/.
     /// </summary>
+    public void FetchLeaderboard(int limit, Action<List<User>> onSuccess,
+                                 Action<string> onError)
+    {
+        _db.Child("users")
+           .OrderByChild("score")
+           .LimitToLast(limit)
+           .GetValueAsync()
+           .ContinueWithOnMainThread(task =>
+           {
+               if (task.IsCanceled || task.IsFaulted)
+               {
+                   HandleTaskError(task, "FetchLeaderboard", onError);
+                   return;
+               }
+
+               var results = new List<User>();
+               foreach (DataSnapshot child in task.Result.Children)
+               {
+                   try
+                   {
+                       User u = JsonUtility.FromJson<User>(child.GetRawJsonValue());
+                       if (u != null && !string.IsNullOrEmpty(u.username))
+                           results.Add(u);
+                   }
+                   catch (Exception ex)
+                   {
+                       Debug.LogWarning($"[FirebaseManager] Skipping user {child.Key}: {ex.Message}");
+                   }
+               }
+
+               // OrderByChild returns ascending — reverse for rank display
+               results.Reverse();
+               Debug.Log($"[FirebaseManager] Leaderboard: {results.Count} entries.");
+               onSuccess(results);
+           });
+    }
+
+    // Keep FetchAllUsers for any callers that still need the full dict
     public void FetchAllUsers(Action<Dictionary<string, User>> onSuccess,
                               Action<string> onError)
     {
@@ -313,54 +430,21 @@ public class FirebaseManager : MonoBehaviour
                    return;
                }
 
-               DataSnapshot snap = task.Result;
-               Dictionary<string, User> users = new Dictionary<string, User>();
-
-               if (!snap.Exists || !snap.HasChildren)
-               {
-                   Debug.Log("[FirebaseManager] No users found in database.");
-                   onSuccess(users);
-                   return;
-               }
-
-               foreach (DataSnapshot child in snap.Children)
+               var users = new Dictionary<string, User>();
+               foreach (DataSnapshot child in task.Result.Children)
                {
                    try
                    {
-                       string json = child.GetRawJsonValue();
-                       User   u    = JsonUtility.FromJson<User>(json);
-
+                       User u = JsonUtility.FromJson<User>(child.GetRawJsonValue());
                        if (u != null && !string.IsNullOrEmpty(u.username))
                            users[child.Key] = u;
-                       else
-                           Debug.LogWarning($"[FirebaseManager] Skipping invalid user entry: {child.Key}");
                    }
                    catch (Exception ex)
                    {
-                       Debug.LogError($"[FirebaseManager] Error parsing user {child.Key}: {ex.Message}");
+                       Debug.LogError($"[FirebaseManager] Error parsing {child.Key}: {ex.Message}");
                    }
                }
-
-               Debug.Log($"[FirebaseManager] Fetched {users.Count} users for leaderboard.");
                onSuccess(users);
-           });
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PRESENCE
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /// <summary>Marks the authenticated user as offline in the database.</summary>
-    public void SetUserOffline()
-    {
-        if (!IsAuthenticated) return;
-
-        _db.Child("users").Child(CurrentUserId).Child("isLoggedIn")
-           .SetValueAsync(false)
-           .ContinueWithOnMainThread(task =>
-           {
-               if (task.IsCompleted)
-                   Debug.Log("[FirebaseManager] User set offline.");
            });
     }
 
@@ -370,11 +454,8 @@ public class FirebaseManager : MonoBehaviour
 
     private void WriteUserJson(User user, Action onSuccess, Action<string> onError)
     {
-        string json   = JsonUtility.ToJson(user);
-        string userId = CurrentUserId;
-
-        _db.Child("users").Child(userId)
-           .SetRawJsonValueAsync(json)
+        _db.Child("users").Child(CurrentUserId)
+           .SetRawJsonValueAsync(JsonUtility.ToJson(user))
            .ContinueWithOnMainThread(task =>
            {
                if (task.IsCanceled || task.IsFaulted)
@@ -389,7 +470,7 @@ public class FirebaseManager : MonoBehaviour
     private bool AssertAuthenticated(Action<string> onError)
     {
         if (IsAuthenticated) return true;
-        const string msg = "User is not authenticated. Please log in first.";
+        const string msg = "User is not authenticated.";
         Debug.LogWarning($"[FirebaseManager] {msg}");
         onError(msg);
         return false;

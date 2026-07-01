@@ -6,36 +6,29 @@
 // ============================================================
 
 using System;
-using UnityEngine;
 using RedCross.Playbook.Data;
 using RedCross.Playbook.Scenario;
+using UnityEngine;
 
 namespace RedCross.Playbook.Scenario
 {
     public class PointsManager : MonoBehaviour
     {
-        // ── Singleton ──────────────────────────────────────────────
         public static PointsManager Instance { get; private set; }
 
-        // ── Events ─────────────────────────────────────────────────
         public event Action<int> OnPointsAdded;
         public event Action<int> OnTotalPointsChanged;
 
-        // ── State ──────────────────────────────────────────────────
-        // Session total — accumulates points earned this session.
-        // Resets when the user logs out.
-        private int _sessionPoints = 0;
+        private int _sessionPoints;
         public int SessionPoints => _sessionPoints;
 
-        // Full total = session points + points already saved in Firebase
-        // Read from UserManager.CurrentUser.score for display.
         public int TotalPoints =>
             UserManager.Instance?.CurrentUser != null
                 ? UserManager.Instance.CurrentUser.score
                 : _sessionPoints;
 
         // ══════════════════════════════════════════════════════════
-        // Lifecycle
+        //  LIFECYCLE
         // ══════════════════════════════════════════════════════════
 
         private void Awake()
@@ -45,33 +38,20 @@ namespace RedCross.Playbook.Scenario
             DontDestroyOnLoad(gameObject);
         }
 
-        private void Start()
-        {
-            TrySubscribeToScenarioManager();
-        }
-
-        private void OnDestroy()
-        {
-            UnsubscribeFromScenarioManager();
-        }
+        private void Start() => TrySubscribeToScenarioManager();
+        private void OnDestroy() => UnsubscribeFromScenarioManager();
 
         // ══════════════════════════════════════════════════════════
-        // ScenarioManager subscription
-        // Called by ScenarioSceneBootstrapper after scene loads
+        //  SUBSCRIPTION
         // ══════════════════════════════════════════════════════════
 
         public void TrySubscribeToScenarioManager()
         {
-            if (ScenarioManager.Instance == null)
-            {
-                Debug.Log("[PointsManager] ScenarioManager not found yet — will subscribe when available.");
-                return;
-            }
-
-            UnsubscribeFromScenarioManager(); // prevent double-subscribe
+            if (ScenarioManager.Instance == null) return;
+            UnsubscribeFromScenarioManager();
             ScenarioManager.Instance.OnPointsAwarded += OnPointsAwardedHandler;
             ScenarioManager.Instance.OnScenarioCompleted += OnScenarioCompleted;
-            Debug.Log("[PointsManager] Subscribed to ScenarioManager events.");
+            Debug.Log("[PointsManager] Subscribed to ScenarioManager.");
         }
 
         private void UnsubscribeFromScenarioManager()
@@ -82,7 +62,7 @@ namespace RedCross.Playbook.Scenario
         }
 
         // ══════════════════════════════════════════════════════════
-        // Points tracking (called during the scenario, per answer)
+        //  HANDLERS
         // ══════════════════════════════════════════════════════════
 
         private void OnPointsAwardedHandler(int delta)
@@ -91,51 +71,29 @@ namespace RedCross.Playbook.Scenario
             _sessionPoints += delta;
             OnPointsAdded?.Invoke(delta);
             OnTotalPointsChanged?.Invoke(TotalPoints);
-            Debug.Log($"[PointsManager] +{delta} pts this session → session total: {_sessionPoints}");
         }
-
-        // ══════════════════════════════════════════════════════════
-        // Scenario complete — write to Firebase via UserManager
-        // ══════════════════════════════════════════════════════════
 
         private void OnScenarioCompleted(UserScenarioProgress progress)
         {
-            if (UserManager.Instance == null || UserManager.Instance.CurrentUser == null)
+            if (UserManager.Instance?.CurrentUser == null)
             {
-                Debug.LogError("[PointsManager] Cannot save score — no user session in UserManager. " +
-                               "Make sure the user is logged in before playing a scenario.");
+                Debug.LogError("[PointsManager] No user session — score not saved.");
                 return;
             }
 
-            string username = UserManager.Instance.CurrentUser.username;
-            string scenarioId = progress.scenarioId;
-            int points = progress.score;
-
-            Debug.Log($"[PointsManager] Scenario '{scenarioId}' complete for '{username}'. " +
-                      $"Awarding {points} pts via UserManager.");
-
-            // This calls FirebaseManager.RecordSimulationCompletion()
-            // which writes to /users/{uid}.simulationScore and .score
-            // — the same path your app already uses everywhere.
             UserManager.Instance.AwardSimulationPoints(
-                simulationId: scenarioId,
-                points: points,
+                simulationId: progress.scenarioId,
+                points: progress.score,
                 onSuccess: () =>
                 {
-                    Debug.Log($"[PointsManager] Score saved to Firebase. " +
-                              $"New total: {UserManager.Instance.CurrentUser.score}");
-                    // Fire the event so HomepageUIManager updates the score label
+                    Debug.Log($"[PointsManager] Score saved. Total: {UserManager.Instance.CurrentUser.score}");
                     OnTotalPointsChanged?.Invoke(TotalPoints);
                 },
-                onError: err =>
-                {
-                    Debug.LogError($"[PointsManager] Failed to save score to Firebase: {err}");
-                }
-            );
+                onError: err => Debug.LogError($"[PointsManager] Save failed: {err}"));
         }
 
         // ══════════════════════════════════════════════════════════
-        // Call this on logout to reset session state
+        //  LOGOUT
         // ══════════════════════════════════════════════════════════
 
         public void ResetSession()

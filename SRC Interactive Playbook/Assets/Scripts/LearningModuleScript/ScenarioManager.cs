@@ -10,13 +10,13 @@
 //   At the end: ScenarioCompleteUI + saves progress + awards points.
 // ============================================================
 
+using RedCross.Playbook.Data;
+using RedCross.Playbook.Firebase;
+using RedCross.Playbook.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using RedCross.Playbook.Data;
-using RedCross.Playbook.Firebase;
-using RedCross.Playbook.UI;
 
 namespace RedCross.Playbook.Scenario
 {
@@ -34,37 +34,38 @@ namespace RedCross.Playbook.Scenario
         [SerializeField] private ScenarioCompleteUI completeUI;
         [SerializeField] private LoadingOverlayUI loadingUI;
 
-        [Header("Background image (RawImage in Hierarchy)")]
+        [Header("Background")]
         [SerializeField] private UnityEngine.UI.RawImage backgroundImage;
 
         // ── Runtime state ──────────────────────────────────────────
         private PlaybookScenario _scenario;
-        private int _currentPartIndex = 0;
-        private int _correctAnswers = 0;
-        private int _totalQuestions = 0;
-        private int _pointsEarned = 0;
+        private int _currentPartIndex;
+        private int _correctAnswers;
+        private int _totalQuestions;
+        private int _pointsEarned;
         private List<string> _answeredChoiceIds = new();
-        private bool _isRunning = false;
+        private bool _isRunning;
 
-        // ── Events ─────────────────────────────────────────────────
         public event Action<int> OnPointsAwarded;
         public event Action<UserScenarioProgress> OnScenarioCompleted;
 
+        [Header("Quiz Transition UI")]
+        [SerializeField] private GameObject quizStartPanel;
+        [SerializeField] private UnityEngine.UI.Button startQuizButton;
+
+        [Header("Quiz Systems")]
+        [SerializeField] private MCQ mcqSystem;
+        [SerializeField] private FactVsOpinion factsSystem;
+        // [SerializeField] private DragAndDrop dragDropSystem;
+
         // ══════════════════════════════════════════════════════════
-        // Lifecycle
+        //  LIFECYCLE
         // ══════════════════════════════════════════════════════════
 
         private void Awake()
         {
-            // Simple singleton — ScenarioManager lives only in ScenarioScene.
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
+            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-
-            // Validate all slots are wired to scene instances
             ValidateReferences();
         }
 
@@ -74,63 +75,18 @@ namespace RedCross.Playbook.Scenario
         }
 
         // ══════════════════════════════════════════════════════════
-        // Reference validation — catches the prefab-asset mistake
+        //  ENTRY POINTS
         // ══════════════════════════════════════════════════════════
 
-        private void ValidateReferences()
-        {
-            CheckRef(introUI, "Intro UI");
-            CheckRef(narrativeUI, "Narrative UI");
-            CheckRef(questionUI, "Question UI");
-            CheckRef(feedbackUI, "Feedback UI");
-            CheckRef(completeUI, "Complete UI");
-            CheckRef(loadingUI, "Loading UI");
-        }
-
-        private void CheckRef(MonoBehaviour mb, string label)
-        {
-            if (mb == null)
-            {
-                Debug.LogError($"[ScenarioManager] {label} is not assigned. " +
-                               "Drag the GameObject from the HIERARCHY (not the Project panel) " +
-                               "into the ScenarioManager Inspector slot.");
-                return;
-            }
-            if (!mb.gameObject.scene.IsValid())
-            {
-                Debug.LogError($"[ScenarioManager] {label} looks like a prefab asset, " +
-                               "not a scene instance. Open the ScenarioScene Hierarchy, " +
-                               $"find the {mb.gameObject.name} GameObject, and drag THAT " +
-                               "into the slot — not the asset in the Project panel.");
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════
-        // Entry points
-        // ══════════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Called by ScenarioSceneBootstrapper with the scenario id.
-        /// </summary>
         public void StartScenario(string scenarioId)
         {
-            if (_isRunning)
-            {
-                Debug.LogWarning("[ScenarioManager] StartScenario called while already running. Ignoring.");
-                return;
-            }
-
-            if (string.IsNullOrEmpty(scenarioId))
-            {
-                Debug.LogError("[ScenarioManager] StartScenario called with empty scenarioId.");
-                return;
-            }
+            if (_isRunning) { Debug.LogWarning("[ScenarioManager] Already running."); return; }
+            if (string.IsNullOrEmpty(scenarioId)) { Debug.LogError("[ScenarioManager] Empty scenarioId."); return; }
 
             ResetState();
             loadingUI.Show("Loading scenario…");
 
-            FirebaseScenarioService.Instance.FetchScenario(
-                scenarioId,
+            FirebaseScenarioService.Instance.FetchScenario(scenarioId,
                 onComplete: scenario =>
                 {
                     _scenario = scenario;
@@ -141,23 +97,15 @@ namespace RedCross.Playbook.Scenario
                 onError: err =>
                 {
                     loadingUI.Hide();
-                    Debug.LogError($"[ScenarioManager] Failed to load '{scenarioId}': {err}");
-                }
-            );
+                    Debug.LogError($"[ScenarioManager] Load failed '{scenarioId}': {err}");
+                });
         }
 
-        /// <summary>
-        /// No-argument version — reads the pending ID from the bootstrapper.
-        /// Assign this to ScenarioIntroUI's Enter button OnClick() in the Inspector
-        /// if you need a direct Inspector binding (not recommended — use the code path).
-        /// </summary>
-        public void StartScenarioFromPending()
-        {
+        public void StartScenarioFromPending() =>
             StartScenario(ScenarioSceneBootstrapper.PendingScenarioId);
-        }
 
         // ══════════════════════════════════════════════════════════
-        // Intro screen
+        //  PLAYBACK
         // ══════════════════════════════════════════════════════════
 
         private void ShowIntro()
@@ -171,15 +119,11 @@ namespace RedCross.Playbook.Scenario
             });
         }
 
-        // ══════════════════════════════════════════════════════════
-        // Scene part playback
-        // ══════════════════════════════════════════════════════════
-
         private void PlayCurrentPart()
         {
             if (_currentPartIndex >= _scenario.sceneParts.Count)
             {
-                FinishScenario();
+                CheckForQuizAssessment(); // Replaced FinishScenario()
                 return;
             }
 
@@ -191,9 +135,60 @@ namespace RedCross.Playbook.Scenario
                 case ScenePartType.Narrative: PlayNarrativePart(part); break;
                 case ScenePartType.Question: PlayQuestionPart(part); break;
                 default:
-                    Debug.LogWarning($"[ScenarioManager] Unknown part type at index {_currentPartIndex}. Skipping.");
                     _currentPartIndex++;
                     PlayCurrentPart();
+                    break;
+            }
+        }
+
+        private void CheckForQuizAssessment()
+        {
+            if (loadingUI != null) loadingUI.Show("Checking for assessment...");
+
+            FirebaseScenarioService.Instance.FetchQuizForScenario(_scenario.id, (fetchedQuiz) =>
+            {
+                if (loadingUI != null) loadingUI.Hide();
+
+                if (fetchedQuiz == null || string.IsNullOrEmpty(fetchedQuiz.type) || fetchedQuiz.type == "None" || fetchedQuiz.questions == null || fetchedQuiz.questions.Count == 0)
+                {
+                    FinishScenario(0, 0, 0); // No quiz available, finish immediately
+                    return;
+                }
+
+                // Show the "Now let's test your knowledge" transition screen
+                if (quizStartPanel != null)
+                {
+                    quizStartPanel.SetActive(true);
+                    startQuizButton.onClick.RemoveAllListeners();
+                    startQuizButton.onClick.AddListener(() =>
+                    {
+                        quizStartPanel.SetActive(false);
+                        LaunchQuizSystem(fetchedQuiz);
+                    });
+                }
+                else
+                {
+                    // Fallback just in case the panel isn't assigned
+                    LaunchQuizSystem(fetchedQuiz);
+                }
+            });
+        }
+
+        private void LaunchQuizSystem(PlaybookQuiz fetchedQuiz)
+        {
+            // Route to the correct Quiz Panel based on the DB type
+            switch (fetchedQuiz.type)
+            {
+                case "MCQ":
+                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, FinishScenario);
+                    else FinishScenario(0, 0, 0);
+                    break;
+                case "FactsVsOpinions":
+                    if (factsSystem != null) factsSystem.StartGame(fetchedQuiz, FinishScenario);
+                    else FinishScenario(0, 0, 0);
+                    break;
+                default:
+                    FinishScenario(0, 0, 0);
                     break;
             }
         }
@@ -220,7 +215,6 @@ namespace RedCross.Playbook.Scenario
         private void HandleChoiceSelected(Choice choice)
         {
             _answeredChoiceIds.Add(choice.id);
-
             if (choice.isCorrect)
             {
                 _correctAnswers++;
@@ -237,10 +231,11 @@ namespace RedCross.Playbook.Scenario
         }
 
         // ══════════════════════════════════════════════════════════
-        // Completion
+        //  COMPLETION
         // ══════════════════════════════════════════════════════════
 
-        private void FinishScenario()
+        // Now accepts the three integers passed back by the Quiz Action callback
+        private void FinishScenario(int quizCorrect, int quizTotal, int quizPointsEarned)
         {
             _isRunning = false;
             _pointsEarned += _scenario.pointsOnCompletion;
@@ -248,7 +243,6 @@ namespace RedCross.Playbook.Scenario
 
             var progress = new UserScenarioProgress
             {
-                scenarioId = _scenario.id,
                 completed = true,
                 score = _pointsEarned,
                 correctAnswers = _correctAnswers,
@@ -257,22 +251,23 @@ namespace RedCross.Playbook.Scenario
                 answeredChoiceIds = _answeredChoiceIds
             };
 
-            string userId = PlayerPrefs.GetString("userId", "guest");
-            FirebaseScenarioService.Instance.SaveUserProgress(userId, progress);
+            string userId = FirebaseManager.Instance?.CurrentUserId;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress);
+            }
+
             OnScenarioCompleted?.Invoke(progress);
 
-            completeUI.Show(progress, _scenario,
+            // Pass the newly acquired quiz stats directly into the unified Complete UI
+            completeUI.Show(progress, _scenario, quizCorrect, quizTotal, quizPointsEarned,
                 onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
-                onReplayClicked: () =>
-                {
-                    string id = _scenario.id;
-                    ResetState();
-                    StartScenario(id);
-                });
+                onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
+            );
         }
 
         // ══════════════════════════════════════════════════════════
-        // Helpers
+        //  HELPERS
         // ══════════════════════════════════════════════════════════
 
         private void ResetState()
@@ -308,6 +303,24 @@ namespace RedCross.Playbook.Scenario
             if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
                 backgroundImage.texture =
                     UnityEngine.Networking.DownloadHandlerTexture.GetContent(req);
+        }
+
+        private void ValidateReferences()
+        {
+            CheckRef(introUI, "Intro UI");
+            CheckRef(narrativeUI, "Narrative UI");
+            CheckRef(questionUI, "Question UI");
+            CheckRef(feedbackUI, "Feedback UI");
+            CheckRef(completeUI, "Complete UI");
+            CheckRef(loadingUI, "Loading UI");
+        }
+
+        private void CheckRef(MonoBehaviour mb, string label)
+        {
+            if (mb == null)
+                Debug.LogError($"[ScenarioManager] {label} not assigned — drag from Hierarchy.");
+            else if (!mb.gameObject.scene.IsValid())
+                Debug.LogError($"[ScenarioManager] {label} looks like a prefab asset, not a scene instance.");
         }
     }
 }
