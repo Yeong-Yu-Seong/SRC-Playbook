@@ -272,9 +272,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 866577937}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 603, y: -1336}
   m_SizeDelta: {x: 113, y: 183}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &96348465
@@ -870,9 +870,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 866577937}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 603, y: -603.5}
   m_SizeDelta: {x: 1020, y: 250}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &133044278
@@ -1295,10 +1295,10 @@ RectTransform:
   - {fileID: 1929014067}
   m_Father: {fileID: 1468934275}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 739, y: -750}
+  m_SizeDelta: {x: 500, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &323547922
 MonoBehaviour:
@@ -2739,9 +2739,9 @@ RectTransform:
   - {fileID: 1599210371}
   m_Father: {fileID: 866577937}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 603, y: -2043.5}
   m_SizeDelta: {x: 1020, y: 200}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &596649674
@@ -3561,25 +3561,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1cd02a75bee307847aef569a24fc50f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FactVsOpinion
-  score: 0
-  statements: []
-  isFactArray: 
-  mascotSprites:
-  - {fileID: 21300000, guid: c04b2384fbbbdcb4db53a435ae265572, type: 3}
-  - {fileID: 21300000, guid: e5b0c90cff44a8849b7a8ff84313c253, type: 3}
-  questionIndex: 0
-  timer: 0
-  isGameActive: 0
-  scenario1Statements:
-  - Qn1.1
-  - Qn1.2
-  scenario1IsFactArray: 0100
-  scenario1LearningPoints: Scenario 1 points
-  scenario2Statements:
-  - Qn2.1
-  - Qn2.2
-  scenario2IsFactArray: 0001
-  scenario2LearningPoints: Scenario 2 points
   statementText: {fileID: 1503718325}
   questionNumberText: {fileID: 552218383}
   timerText: {fileID: 1098704181}
@@ -3588,13 +3569,9 @@ MonoBehaviour:
   - {fileID: 267180702}
   - {fileID: 836570828}
   gamePanel: {fileID: 1809527757}
-  resultPanel: {fileID: 1029935169}
-  finalScoreText: {fileID: 1092424611}
-  pointText: {fileID: 1468871529}
-  endMessageText: {fileID: 1287534483}
-  endMessageSubText: {fileID: 1696053380}
-  learningPointsText: {fileID: 1923109954}
-  quizManagerInstance: {fileID: 393280209}
+  mascotSprites:
+  - {fileID: 21300000, guid: c04b2384fbbbdcb4db53a435ae265572, type: 3}
+  - {fileID: 21300000, guid: e5b0c90cff44a8849b7a8ff84313c253, type: 3}
 --- !u!114 &795742471
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3711,61 +3688,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5473aa138790d18499231ad8eae784d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MCQ
-  score: 0
-  statements: []
-  answerArray: []
-  answerExplanationArray: []
-  optionAArray: []
-  optionBArray: []
-  optionCArray: []
-  optionDArray: []
-  scenario1Statements:
-  - Q1.1
-  - Q1.2
-  scenario1AnswerArray:
-  - A
-  - B
-  scenario1AnswerExplanationArray:
-  - AE1.1
-  - AE1.2
-  scenario1OptionAArray:
-  - A1.1
-  - A1.2
-  scenario1OptionBArray:
-  - B1.1
-  - B1.2
-  scenario1OptionCArray:
-  - C1.1
-  - C1.2
-  scenario1OptionDArray:
-  - D1.1
-  - D1.2
-  scenario1LearningPoints: Scenario 1 points
-  scenario2Statements:
-  - Q2.1
-  - Q2.2
-  scenario2AnswerArray:
-  - C
-  - D
-  scenario2AnswerExplanationArray:
-  - AE2.1
-  - AE2.2
-  scenario2OptionAArray:
-  - A2.1
-  - A2.2
-  scenario2OptionBArray:
-  - B2.1
-  - B2.2
-  scenario2OptionCArray:
-  - C2.1
-  - C2.2
-  scenario2OptionDArray:
-  - D2.1
-  - D2.2
-  scenario2LearningPoints: Scenario 2 points
-  questionIndex: 0
-  timer: 0
-  isGameActive: 0
   statementText: {fileID: 1192519314}
   questionNumberText: {fileID: 595553949}
   answerPanelQuestionNumber: {fileID: 2063148039}
@@ -3775,22 +3697,11 @@ MonoBehaviour:
   - {fileID: 1258737478}
   - {fileID: 1040199900}
   - {fileID: 323547923}
+  optionTexts: []
   gamePanel: {fileID: 1476627373}
   answerPanel: {fileID: 708447532}
-  resultPanel: {fileID: 113581899}
-  finalScoreText: {fileID: 122096610}
-  pointText: {fileID: 766583841}
-  endMessageText: {fileID: 1600307484}
-  endMessageSubText: {fileID: 268479914}
-  optionAText: {fileID: 1960676475}
-  optionBText: {fileID: 528646098}
-  optionCText: {fileID: 127344230}
-  optionDText: {fileID: 1929014068}
-  answerText: {fileID: 2063148039}
   answerQuestionText: {fileID: 1082957502}
-  nextQuestionButton: {fileID: 769922395}
-  learningPointsText: {fileID: 1328754840}
-  quizManagerInstance: {fileID: 393280209}
+  answerText: {fileID: 2063148039}
 --- !u!114 &818520461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4823,10 +4734,10 @@ RectTransform:
   - {fileID: 127344229}
   m_Father: {fileID: 1468934275}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 189, y: -750}
+  m_SizeDelta: {x: 500, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1040199899
 MonoBehaviour:
@@ -6421,10 +6332,10 @@ RectTransform:
   - {fileID: 528646097}
   m_Father: {fileID: 1468934275}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 739, y: -200.00003}
+  m_SizeDelta: {x: 500, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1258737477
 MonoBehaviour:
@@ -6568,10 +6479,10 @@ RectTransform:
   - {fileID: 1960676474}
   m_Father: {fileID: 1468934275}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 189, y: -200.00003}
+  m_SizeDelta: {x: 500, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1273298117
 MonoBehaviour:
@@ -7378,7 +7289,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1475519487
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7479,7 +7390,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1476627374
 RectTransform:
   m_ObjectHideFlags: 0

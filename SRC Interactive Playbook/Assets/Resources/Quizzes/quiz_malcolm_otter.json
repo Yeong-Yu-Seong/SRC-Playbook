@@ -1,0 +1,51 @@
+{
+  "id": "quiz_malcolm_otter",
+  "title": "Malcolm Otter — Knowledge Check",
+  "type": "FactsVsOpinions",
+  "linkedScenarioId": "scenario_malcolm_otter",
+  "pointsOnCompletion": 0,
+  "isPublished": true,
+  "sortOrder": 1,
+  "questions": [
+    {
+      "id": "q1",
+      "prompt": "Malcolm arrived between 10:20 AM and 10:35 AM for two consecutive weeks.",
+      "correctAnswerId": "choice_fact",
+      "feedbackText": "This is a verifiable, observable fact backed by attendance records.",
+      "choices": [
+        { "id": "choice_fact",    "text": "Fact" },
+        { "id": "choice_opinion", "text": "Opinion" }
+      ]
+    },
+    {
+      "id": "q2",
+      "prompt": "Malcolm clearly does not care about his job.",
+      "correctAnswerId": "choice_opinion",
+      "feedbackText": "This is an assumption about intent — not an observable, documented fact.",
+      "choices": [
+        { "id": "choice_fact",    "text": "Fact" },
+        { "id": "choice_opinion", "text": "Opinion" }
+      ]
+    },
+    {
+      "id": "q3",
+      "prompt": "Malcolm's repeated lateness delayed team meetings.",
+      "correctAnswerId": "choice_fact",
+      "feedbackText": "This describes an observable operational impact that can be evidenced.",
+      "choices": [
+        { "id": "choice_fact",    "text": "Fact" },
+        { "id": "choice_opinion", "text": "Opinion" }
+      ]
+    },
+    {
+      "id": "q4",
+      "prompt": "Malcolm is irresponsible and unmotivated.",
+      "correctAnswerId": "choice_opinion",
+      "feedbackText": "Character judgements are opinions. HR documentation must stick to observable behaviour.",
+      "choices": [
+        { "id": "choice_fact",    "text": "Fact" },
+        { "id": "choice_opinion", "text": "Opinion" }
+      ]
+    }
+  ]
+}
