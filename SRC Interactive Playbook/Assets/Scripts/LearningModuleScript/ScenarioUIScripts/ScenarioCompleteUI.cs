@@ -10,8 +10,9 @@ public class ScenarioCompleteUI : MonoBehaviour
     [Header("References")]
     [SerializeField] private GameObject panel;
     [SerializeField] private TextMeshProUGUI scenarioTitleText;
-    [SerializeField] private TextMeshProUGUI scoreText;
-    [SerializeField] private TextMeshProUGUI correctAnswersText;
+    [SerializeField] private TextMeshProUGUI scenarioStatsText;
+    [SerializeField] private TextMeshProUGUI quizStatsText;
+    [SerializeField] private TextMeshProUGUI totalPointsText;
     [SerializeField] private GameObject perfectScoreBadge;
     [SerializeField] private Button homeButton;
     [SerializeField] private Button replayButton;
@@ -37,19 +38,36 @@ public class ScenarioCompleteUI : MonoBehaviour
 
     }
 
-    public void Show(UserScenarioProgress progress, PlaybookScenario scenario,
+    public void Show(UserScenarioProgress scenarioProgress, PlaybookScenario scenario, int quizCorrect, int quizTotal, int quizPoints,
                      Action onHomeClicked, Action onReplayClicked)
     {
         _onHome = onHomeClicked;
         _onReplay = onReplayClicked;
 
         scenarioTitleText.text = scenario.title;
-        scoreText.text = $"{progress.score} pts";
-        correctAnswersText.text = $"{progress.correctAnswers} / {progress.totalQuestions} correct";
 
-        bool perfect = progress.totalQuestions > 0 &&
-                       progress.correctAnswers == progress.totalQuestions;
-        if (perfectScoreBadge != null) perfectScoreBadge.SetActive(perfect);
+        // 1. Scenario Breakdown
+        scenarioStatsText.text = $"Scenario Choices: {scenarioProgress.correctAnswers}/{scenarioProgress.totalQuestions} (+{scenarioProgress.score} pts)";
+
+        // 2. Quiz Breakdown
+        if (quizTotal > 0)
+        {
+            quizStatsText.gameObject.SetActive(true);
+            quizStatsText.text = $"Assessment Quiz: {quizCorrect}/{quizTotal} (+{quizPoints} pts)";
+        }
+        else
+        {
+            quizStatsText.gameObject.SetActive(false); // Hide if no quiz was played
+        }
+
+        // 3. Total Points
+        int totalEarned = scenarioProgress.score + quizPoints;
+        totalPointsText.text = $"Total Earned: +{totalEarned} pts";
+
+        // Badge Logic
+        bool perfectScenario = scenarioProgress.totalQuestions > 0 && scenarioProgress.correctAnswers == scenarioProgress.totalQuestions;
+        bool perfectQuiz = quizTotal == 0 || (quizTotal > 0 && quizCorrect == quizTotal);
+        if (perfectScoreBadge != null) perfectScoreBadge.SetActive(perfectScenario && perfectQuiz);
 
         panel.SetActive(true);
     }

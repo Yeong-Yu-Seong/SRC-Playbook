@@ -3,15 +3,12 @@
 // Populates the homepage exhibit gallery with scenario cards.
 // Tapping a card loads the ScenarioScene and starts that scenario.
 // ============================================================
-
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
-using UnityEngine.SceneManagement;
 using RedCross.Playbook.Data;
 using RedCross.Playbook.Firebase;
-using RedCross.Playbook.Scenario;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace RedCross.Playbook.UI
 {
@@ -25,20 +22,19 @@ namespace RedCross.Playbook.UI
         [SerializeField] private GameObject loadingIndicator;
         [SerializeField] private GameObject emptyState;
 
-        [Header("Scene")]
-        [Tooltip("Must match the exact scene name in Build Settings.")]
-        [SerializeField] private string scenarioSceneName = "ScenarioScene";
-
         private readonly List<GameObject> _spawnedCards = new();
 
-        // ── Called on first load ───────────────────────────────────
+        // ══════════════════════════════════════════════════════════
+        //  LIFECYCLE
+        // ══════════════════════════════════════════════════════════
+
         private void Start() => LoadScenarioList();
 
-        // ── Called by HomepageUIManager on return from ScenarioScene ──
+        /// <summary>Called by HomepageUIManager on return from ScenarioScene.</summary>
         public void RefreshList() => LoadScenarioList();
 
         // ══════════════════════════════════════════════════════════
-        // Load & render
+        //  LOAD & RENDER
         // ══════════════════════════════════════════════════════════
 
         private void LoadScenarioList()
@@ -62,9 +58,30 @@ namespace RedCross.Playbook.UI
                 return;
             }
 
+            // FIXED: Firebase returns entries already ordered by sortOrder (via
+            // .orderByChild("sortOrder") in FetchIndexFromFirebase). Local fallback
+            // also sorts before returning. Belt-and-suspenders sort here as well.
+            entries.Sort((a, b) => a.sortOrder.CompareTo(b.sortOrder));
+
             foreach (var entry in entries)
             {
-                var go = Instantiate(exhibitCardPrefab, cardContainer);
+                // Instantiate without parenting first so we can set RectTransform freely
+                var go = Instantiate(exhibitCardPrefab, cardContainer, false);
+
+                // Now each card is placed at its curator-specified wall position and size
+                // using the wallX/wallY/cardWidth/cardHeight fields from Firebase.
+                // The cardContainer must NOT have a LayoutGroup component attached —
+                // remove any GridLayoutGroup or VerticalLayoutGroup from it in the Inspector.
+                var rt = go.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(0f, 1f);   // top-left anchor
+                    rt.anchorMax = new Vector2(0f, 1f);
+                    rt.pivot = new Vector2(0f, 1f);
+                    rt.anchoredPosition = new Vector2(entry.wallX, -entry.wallY);
+                    rt.sizeDelta = new Vector2(entry.cardWidth, entry.cardHeight);
+                }
+
                 var card = go.GetComponent<ExhibitCardUI>();
                 if (card != null)
                     card.Initialise(entry);

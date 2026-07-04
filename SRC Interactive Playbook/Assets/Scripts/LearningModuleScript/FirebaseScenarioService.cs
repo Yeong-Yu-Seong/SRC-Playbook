@@ -8,16 +8,14 @@
 // your project's google-services.json / GoogleService-Info.plist.
 // Firebase package: com.google.firebase.database (v12+)
 // ============================================================
-
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using Newtonsoft.Json;
-using RedCross.Playbook.Data;
 using Firebase;
 using Firebase.Database;
 using Firebase.Extensions;
+using Newtonsoft.Json;
+using RedCross.Playbook.Data;
+using UnityEngine;
 
 namespace RedCross.Playbook.Firebase
 {
@@ -27,20 +25,17 @@ namespace RedCross.Playbook.Firebase
         public static FirebaseScenarioService Instance { get; private set; }
 
         [Header("Firebase Config")]
-        [Tooltip("Must match the root node in Firebase and in the Admin Dashboard setting.")]
-        [SerializeField] private string dbRootNode = "playbook";   // ← KEY FIX
-
-        [Tooltip("Uncheck to force local JSON fallback during development.")]
+        [SerializeField] private string dbRootNode = "playbook";
         [SerializeField] private bool useFirebase = true;
 
-        private bool _firebaseReady = false;
+        private bool _firebaseReady;
         private DatabaseReference _dbRef;
 
         public event Action OnFirebaseReady;
         public event Action<string> OnFirebaseError;
 
         // ══════════════════════════════════════════════════════════
-        // Lifecycle
+        //  LIFECYCLE
         // ══════════════════════════════════════════════════════════
 
         private void Awake()
@@ -61,34 +56,30 @@ namespace RedCross.Playbook.Firebase
             {
                 if (task.Result == DependencyStatus.Available)
                 {
-                    _dbRef         = FirebaseDatabase.DefaultInstance.RootReference;
+                    _dbRef = FirebaseDatabase.DefaultInstance.RootReference;
                     _firebaseReady = true;
                     OnFirebaseReady?.Invoke();
-                    Debug.Log("[Firebase] Initialised successfully.");
+                    Debug.Log("[FirebaseScenarioService] Initialised.");
                 }
                 else
                 {
-                    Debug.LogWarning($"[Firebase] Dependency error: {task.Result}. Using local fallback.");
+                    Debug.LogWarning($"[FirebaseScenarioService] Dependency error: {task.Result}. Using local fallback.");
                     _firebaseReady = false;
                     OnFirebaseError?.Invoke(task.Result.ToString());
                 }
             });
-
-            Debug.Log("[FirebaseScenarioService] Running in local-JSON fallback mode. " +
-                      "Import Firebase SDK and uncomment the InitFirebase block to use live data.");
-            _firebaseReady = false;
         }
 
         // ══════════════════════════════════════════════════════════
-        // Public API
+        //  PUBLIC API
         // ══════════════════════════════════════════════════════════
+
         public void FetchScenarioIndex(Action<List<ScenarioIndexEntry>> onComplete)
         {
             if (_firebaseReady) FetchIndexFromFirebase(onComplete);
             else FetchIndexFromLocal(onComplete);
         }
 
-        // Reads from: playbook/scenarios/{scenarioId}
         public void FetchScenario(string scenarioId,
                                   Action<PlaybookScenario> onComplete,
                                   Action<string> onError = null)
@@ -104,12 +95,18 @@ namespace RedCross.Playbook.Firebase
             else FetchAllFromLocal(onComplete, onError);
         }
 
-
-        public void SaveUserProgress(string userId, UserScenarioProgress progress,
+        /// <summary>
+        /// FIXED: now accepts scenarioId as an explicit parameter.
+        /// Old signature used progress.scenarioId as the node key, which broke
+        /// once scenarioId was removed as a written field from UserScenarioProgress.
+        /// The node key and the document content are now cleanly separated.
+        /// </summary>
+        public void SaveUserProgress(string userId, string scenarioId,
+                                     UserScenarioProgress progress,
                                      Action onComplete = null)
         {
-            if (_firebaseReady) SaveProgressToFirebase(userId, progress, onComplete);
-            else SaveProgressToLocal(userId, progress, onComplete);
+            if (_firebaseReady) SaveProgressToFirebase(userId, scenarioId, progress, onComplete);
+            else SaveProgressToLocal(userId, scenarioId, progress, onComplete);
         }
 
         public void FetchUserProgress(string userId, string scenarioId,
@@ -120,89 +117,166 @@ namespace RedCross.Playbook.Firebase
         }
 
         // ══════════════════════════════════════════════════════════
-        // Firebase implementations
+        //  FIREBASE IMPLEMENTATIONS
         // ══════════════════════════════════════════════════════════
 
         private void FetchIndexFromFirebase(Action<List<ScenarioIndexEntry>> onComplete)
         {
+            // FIXED: previous version called FetchIndexFromLocal(onComplete) immediately
+            // after starting the async request — both paths fired on every call.
+            // Now local fallback is only called inside the async callback on failure.
+            // FIXED: added .OrderByChild("sortOrder") so gallery display order is
+            // controlled by the curator via the sortOrder field, not key lexicography.
             _dbRef.Child(dbRootNode).Child("scenarios_index")
-                  .GetValueAsync().ContinueWithOnMainThread(task =>
-            {
-                if (!task.IsCompletedSuccessfully) { FetchIndexFromLocal(onComplete); return; }
-                var list = new List<ScenarioIndexEntry>();
-                foreach (var child in task.Result.Children)
-                {
-                    var e = JsonConvert.DeserializeObject<ScenarioIndexEntry>(child.GetRawJsonValue());
-                    if (e != null) list.Add(e);
-                }
-                onComplete?.Invoke(list);
-            });
-            FetchIndexFromLocal(onComplete);
+                  .OrderByChild("sortOrder")
+                  .GetValueAsync()
+                  .ContinueWithOnMainThread(task =>
+                  {
+                      if (!task.IsCompletedSuccessfully)
+                      {
+                          Debug.LogWarning("[FirebaseScenarioService] Index fetch failed — using local fallback.");
+                          FetchIndexFromLocal(onComplete);
+                          return;
+                      }
+
+                      var list = new List<ScenarioIndexEntry>();
+                      foreach (DataSnapshot child in task.Result.Children)
+                      {
+                          try
+                          {
+                              var e = JsonConvert.DeserializeObject<ScenarioIndexEntry>(
+                                          child.GetRawJsonValue());
+                              if (e != null && e.isPublished) list.Add(e);
+                          }
+                          catch (Exception ex)
+                          {
+                              Debug.LogWarning($"[FirebaseScenarioService] Skipping index entry {child.Key}: {ex.Message}");
+                          }
+                      }
+
+                      onComplete?.Invoke(list);
+                  });
         }
 
         private void FetchScenarioFromFirebase(string id,
                                                Action<PlaybookScenario> onComplete,
                                                Action<string> onError)
         {
+            // FIXED: same double-fire bug as FetchIndexFromFirebase — local fallback
+            // was called unconditionally on the same frame. Now only called on failure.
             _dbRef.Child(dbRootNode).Child("scenarios").Child(id)
-                  .GetValueAsync().ContinueWithOnMainThread(task =>
-            {
-                if (!task.IsCompletedSuccessfully || !task.Result.Exists)
-                {
-                    FetchScenarioFromLocal(id, onComplete, onError);
-                    return;
-                }
-                var s = JsonConvert.DeserializeObject<PlaybookScenario>(task.Result.GetRawJsonValue());
-                onComplete?.Invoke(s);
-            });
-            FetchScenarioFromLocal(id, onComplete, onError);
+                  .GetValueAsync()
+                  .ContinueWithOnMainThread(task =>
+                  {
+                      if (!task.IsCompletedSuccessfully || !task.Result.Exists)
+                      {
+                          Debug.LogWarning($"[FirebaseScenarioService] Scenario '{id}' not found in Firebase — using local fallback.");
+                          FetchScenarioFromLocal(id, onComplete, onError);
+                          return;
+                      }
+
+                      try
+                      {
+                          var s = JsonConvert.DeserializeObject<PlaybookScenario>(
+                                      task.Result.GetRawJsonValue());
+                          onComplete?.Invoke(s);
+                      }
+                      catch (Exception ex)
+                      {
+                          Debug.LogError($"[FirebaseScenarioService] Parse error for '{id}': {ex.Message}");
+                          onError?.Invoke(ex.Message);
+                      }
+                  });
         }
 
         private void FetchAllFromFirebase(Action<List<PlaybookScenario>> onComplete,
                                           Action<string> onError)
         {
+            // FIXED: same double-fire bug — local fallback was unconditional.
             _dbRef.Child(dbRootNode).Child("scenarios")
-                  .GetValueAsync().ContinueWithOnMainThread(task =>
-            {
-                if (!task.IsCompletedSuccessfully) { onError?.Invoke(task.Exception?.Message); return; }
-                var list = new List<PlaybookScenario>();
-                foreach (var child in task.Result.Children)
-                {
-                    var s = JsonConvert.DeserializeObject<PlaybookScenario>(child.GetRawJsonValue());
-                    if (s != null) list.Add(s);
-                }
-                onComplete?.Invoke(list);
-            });
-            FetchAllFromLocal(onComplete, onError);
+                  .GetValueAsync()
+                  .ContinueWithOnMainThread(task =>
+                  {
+                      if (!task.IsCompletedSuccessfully)
+                      {
+                          Debug.LogWarning("[FirebaseScenarioService] FetchAll failed — using local fallback.");
+                          FetchAllFromLocal(onComplete, onError);
+                          return;
+                      }
+
+                      var list = new List<PlaybookScenario>();
+                      foreach (DataSnapshot child in task.Result.Children)
+                      {
+                          try
+                          {
+                              var s = JsonConvert.DeserializeObject<PlaybookScenario>(
+                                          child.GetRawJsonValue());
+                              if (s != null) list.Add(s);
+                          }
+                          catch (Exception ex)
+                          {
+                              Debug.LogWarning($"[FirebaseScenarioService] Skipping scenario {child.Key}: {ex.Message}");
+                          }
+                      }
+
+                      onComplete?.Invoke(list);
+                  });
         }
 
-        private void SaveProgressToFirebase(string userId, UserScenarioProgress progress,
+        private void SaveProgressToFirebase(string userId, string scenarioId,
+                                            UserScenarioProgress progress,
                                             Action onComplete)
         {
+            // FIXED: was using progress.scenarioId as the node key.
+            // progress.scenarioId is now [Obsolete] — the explicit scenarioId
+            // parameter is used as the key so the field and the node are never out of sync.
             string json = JsonConvert.SerializeObject(progress);
-            _dbRef.Child(dbRootNode).Child("user_progress").Child(userId)
-                  .Child(progress.scenarioId).SetRawJsonValueAsync(json)
-                  .ContinueWithOnMainThread(_ => onComplete?.Invoke());
-            SaveProgressToLocal(userId, progress, onComplete);
+
+            _dbRef.Child(dbRootNode).Child("user_progress")
+                  .Child(userId).Child(scenarioId)
+                  .SetRawJsonValueAsync(json)
+                  .ContinueWithOnMainThread(task =>
+                  {
+                      if (task.IsCanceled || task.IsFaulted)
+                          Debug.LogError($"[FirebaseScenarioService] SaveProgress failed for '{scenarioId}': " +
+                                         task.Exception?.GetBaseException().Message);
+                      else
+                          Debug.Log($"[FirebaseScenarioService] Progress saved: {userId}/{scenarioId}");
+
+                      onComplete?.Invoke();
+                  });
         }
 
         private void FetchProgressFromFirebase(string userId, string scenarioId,
                                                Action<UserScenarioProgress> onComplete)
         {
-            _dbRef.Child(dbRootNode).Child("user_progress").Child(userId)
-                  .Child(scenarioId).GetValueAsync().ContinueWithOnMainThread(task =>
-            {
-                if (!task.IsCompletedSuccessfully || !task.Result.Exists)
-                { onComplete?.Invoke(null); return; }
-                var p = JsonConvert.DeserializeObject<UserScenarioProgress>(
-                            task.Result.GetRawJsonValue());
-                onComplete?.Invoke(p);
-            });
-            FetchProgressFromLocal(userId, scenarioId, onComplete);
+            _dbRef.Child(dbRootNode).Child("user_progress")
+                  .Child(userId).Child(scenarioId)
+                  .GetValueAsync()
+                  .ContinueWithOnMainThread(task =>
+                  {
+                      if (!task.IsCompletedSuccessfully || !task.Result.Exists)
+                      {
+                          onComplete?.Invoke(null);
+                          return;
+                      }
+
+                      try
+                      {
+                          var p = JsonConvert.DeserializeObject<UserScenarioProgress>(
+                                      task.Result.GetRawJsonValue());
+                          onComplete?.Invoke(p);
+                      }
+                      catch (Exception ex)
+                      {
+                          Debug.LogWarning($"[FirebaseScenarioService] Progress parse error: {ex.Message}");
+                          onComplete?.Invoke(null);
+                      }
+                  });
         }
 
         // ══════════════════════════════════════════════════════════
-        // Local JSON fallback
+        //  LOCAL JSON FALLBACK
         // ══════════════════════════════════════════════════════════
 
         private void FetchIndexFromLocal(Action<List<ScenarioIndexEntry>> onComplete)
@@ -211,6 +285,7 @@ namespace RedCross.Playbook.Firebase
             foreach (var s in LoadAllLocalScenarios())
             {
                 if (!s.isPublished) continue;
+
                 int q = 0;
                 foreach (var p in s.sceneParts)
                     if (p.type == ScenePartType.Question) q++;
@@ -218,15 +293,18 @@ namespace RedCross.Playbook.Firebase
                 list.Add(new ScenarioIndexEntry
                 {
                     id = s.id,
-                    title = s.title,
                     exhibitNumber = s.exhibitNumber,
-                    outlineDescription = s.outlineDescription,
                     thumbnailUrl = s.thumbnailUrl,
                     isPublished = s.isPublished,
                     totalQuestions = q,
                     pointsOnCompletion = s.pointsOnCompletion
+                    // sortOrder, wallX, wallY, cardWidth, cardHeight default to 0/300/240
+                    // — fine for local dev; real values come from Firebase in production.
                 });
             }
+
+            // Sort by sortOrder for consistent local display
+            list.Sort((a, b) => a.sortOrder.CompareTo(b.sortOrder));
             onComplete?.Invoke(list);
         }
 
@@ -234,25 +312,24 @@ namespace RedCross.Playbook.Firebase
                                             Action<PlaybookScenario> onComplete,
                                             Action<string> onError)
         {
-            // Local JSON files live at: Assets/Resources/Scenarios/{id}.json
             var asset = Resources.Load<TextAsset>($"Scenarios/{id}");
             if (asset == null)
             {
-                string msg = $"[FirebaseScenarioService] Local file not found: Resources/Scenarios/{id}.json\n" +
-                             "Either add the JSON file, or connect Firebase so live data is used instead.";
+                string msg = $"[FirebaseScenarioService] Local file not found: Resources/Scenarios/{id}.json";
                 Debug.LogError(msg);
                 onError?.Invoke(msg);
                 return;
             }
+
             try
             {
                 var scenario = JsonConvert.DeserializeObject<PlaybookScenario>(asset.text);
                 onComplete?.Invoke(scenario);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.LogError($"[FirebaseScenarioService] JSON parse error in {id}: {e.Message}");
-                onError?.Invoke(e.Message);
+                Debug.LogError($"[FirebaseScenarioService] JSON parse error in {id}: {ex.Message}");
+                onError?.Invoke(ex.Message);
             }
         }
 
@@ -260,13 +337,14 @@ namespace RedCross.Playbook.Firebase
                                        Action<string> onError)
         {
             try { onComplete?.Invoke(LoadAllLocalScenarios()); }
-            catch (Exception e) { onError?.Invoke(e.Message); }
+            catch (Exception ex) { onError?.Invoke(ex.Message); }
         }
 
         private List<PlaybookScenario> LoadAllLocalScenarios()
         {
             var list = new List<PlaybookScenario>();
             var assets = Resources.LoadAll<TextAsset>("Scenarios");
+
             foreach (var a in assets)
             {
                 try
@@ -274,24 +352,27 @@ namespace RedCross.Playbook.Firebase
                     var s = JsonConvert.DeserializeObject<PlaybookScenario>(a.text);
                     if (s != null) list.Add(s);
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Debug.LogWarning($"[FirebaseScenarioService] Skipping {a.name}: {e.Message}");
+                    Debug.LogWarning($"[FirebaseScenarioService] Skipping {a.name}: {ex.Message}");
                 }
             }
+
             return list;
         }
 
-        // ── Local progress ─────────────────────────────────────────
+        // ── Local progress ──────────────────────────────────────────
 
         private static string ProgressKey(string userId, string scenarioId) =>
             $"progress_{userId}_{scenarioId}";
 
-        private static void SaveProgressToLocal(string userId,
+        private static void SaveProgressToLocal(string userId, string scenarioId,
                                                 UserScenarioProgress progress,
                                                 Action onComplete)
         {
-            PlayerPrefs.SetString(ProgressKey(userId, progress.scenarioId),
+            // FIXED: was using progress.scenarioId as the key — now uses the
+            // explicit scenarioId parameter, consistent with the Firebase path.
+            PlayerPrefs.SetString(ProgressKey(userId, scenarioId),
                                   JsonConvert.SerializeObject(progress));
             PlayerPrefs.Save();
             onComplete?.Invoke();
@@ -302,8 +383,75 @@ namespace RedCross.Playbook.Firebase
         {
             string json = PlayerPrefs.GetString(ProgressKey(userId, scenarioId), "");
             if (string.IsNullOrEmpty(json)) { onComplete?.Invoke(null); return; }
+
             try { onComplete?.Invoke(JsonConvert.DeserializeObject<UserScenarioProgress>(json)); }
             catch { onComplete?.Invoke(null); }
+        }
+        public void FetchQuizForScenario(string scenarioId, Action<PlaybookQuiz> onComplete)
+        {
+            if (!_firebaseReady)
+            {
+                // Route to local fallback instead of returning null
+                FetchQuizFromLocal(scenarioId, onComplete);
+                return;
+            }
+
+            Debug.Log($"[FirebaseScenarioService] Fetching quiz for scenario: {scenarioId}");
+
+            _dbRef.Child(dbRootNode).Child("quizzes")
+                  .GetValueAsync()
+                  .ContinueWithOnMainThread(task =>
+                  {
+                      if (!task.IsCompletedSuccessfully || !task.Result.Exists)
+                      {
+                          onComplete?.Invoke(null);
+                          return;
+                      }
+
+                      foreach (DataSnapshot child in task.Result.Children)
+                      {
+                          try
+                          {
+                              var quiz = JsonConvert.DeserializeObject<PlaybookQuiz>(child.GetRawJsonValue());
+                              if (quiz != null && quiz.linkedScenarioId == scenarioId)
+                              {
+                                  onComplete?.Invoke(quiz);
+                                  return;
+                              }
+                          }
+                          catch (Exception ex)
+                          {
+                              Debug.LogWarning($"[Firebase] Quiz parse error: {ex.Message}");
+                          }
+                      }
+                      onComplete?.Invoke(null);
+                  });
+        }
+        private void FetchQuizFromLocal(string scenarioId, Action<PlaybookQuiz> onComplete)
+        {
+            Debug.Log("[FirebaseScenarioService] Using Local Fallback for Quiz.");
+
+            // Loads any JSON files placed in a "Resources/Quizzes" folder
+            var assets = Resources.LoadAll<TextAsset>("Quizzes");
+            foreach (var asset in assets)
+            {
+                try
+                {
+                    var quiz = JsonConvert.DeserializeObject<PlaybookQuiz>(asset.text);
+                    if (quiz != null && quiz.linkedScenarioId == scenarioId)
+                    {
+                        onComplete?.Invoke(quiz);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Skip invalid JSONs
+                }
+            }
+
+            Debug.LogWarning($"[FirebaseScenarioService] No local quiz found linked to {scenarioId}.");
+            onComplete?.Invoke(null);
         }
     }
 }
