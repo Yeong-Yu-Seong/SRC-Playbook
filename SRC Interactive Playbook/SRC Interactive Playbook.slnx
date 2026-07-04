@@ -1,7 +1,6 @@
 ﻿<Solution>
   <Project Path="Unity.Timeline.csproj" />
   <Project Path="Unity.RenderPipelines.GPUDriven.Runtime.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.ShaderGraph.Editor.csproj" />
   <Project Path="Unity.RenderPipelines.Core.Runtime.csproj" />
   <Project Path="Unity.Mathematics.csproj" />
@@ -29,8 +28,10 @@
   <Project Path="Unity.XR.CoreUtils.csproj" />
   <Project Path="Unity.XR.Simulation.Editor.csproj" />
   <Project Path="Unity.Searcher.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.XR.ARCore.csproj" />
   <Project Path="UnityEditor.TestRunner.csproj" />
+  <Project Path="Firebase.App.Internal.csproj" />
   <Project Path="Unity.RenderPipelines.Universal.Runtime.csproj" />
   <Project Path="Unity.UnifiedRayTracing.Runtime.csproj" />
   <Project Path="Unity.TestTools.CodeCoverage.Editor.csproj" />
