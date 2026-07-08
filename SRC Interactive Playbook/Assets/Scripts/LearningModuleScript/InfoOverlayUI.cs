@@ -11,7 +11,7 @@ public class InfoOverlayUI : MonoBehaviour
 
     [SerializeField] private CanvasGroup canvasGroup;
     [SerializeField] private RectTransform panel;
-    [SerializeField] private TextMeshProUGUI exhibitLabel, titleText, descriptionText, pointsText;
+    [SerializeField] private TextMeshProUGUI exhibitLabel, titleText, characterText, descriptionText, pointsText;
     [SerializeField] private Button enterButton, backdropButton;
 
     private System.Action _onEnter;
@@ -29,6 +29,9 @@ public class InfoOverlayUI : MonoBehaviour
 
         exhibitLabel.text = entry.exhibitNumber;
         pointsText.text = $"+{entry.pointsOnCompletion} pts";
+        if (titleText != null) titleText.text = entry.title;
+        if (characterText != null) characterText.text = entry.characterText;
+        if (descriptionText != null) descriptionText.text = entry.outlineDescription;
 
         // Reset position and visibility before animating in
         panel.anchoredPosition = new Vector2(0, -300);

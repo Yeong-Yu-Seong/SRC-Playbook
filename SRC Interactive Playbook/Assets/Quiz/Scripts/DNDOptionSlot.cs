@@ -3,25 +3,29 @@ using UnityEngine.EventSystems;
 
 public class DNDOptionSlot : MonoBehaviour, IDropHandler
 {
+    [HideInInspector] public string questionId;
     public void OnDrop(PointerEventData eventData)
-    {   
-        if (transform.childCount == 0)
+    {
+        GameObject droppedObject = eventData.pointerDrag;
+        if (droppedObject != null)
         {
-            GameObject droppedObject = eventData.pointerDrag; // gets the object that was dropped onto this slot
-            DraggableOption draggableOption = droppedObject.GetComponent<DraggableOption>();
-            draggableOption.parentAfterDrag = this.transform; // sets the parent of the dropped object to this slot
+            DraggableOption draggable = droppedObject.GetComponent<DraggableOption>();
+            if (draggable != null)
+            {
+                // Checks if a draggable option is already sitting in this slot
+                DraggableOption existingAnswer = GetComponentInChildren<DraggableOption>();
+
+                if (existingAnswer == null)
+                {
+                    draggable.parentAfterDrag = this.transform;
+                }
+                else
+                {
+                    // Swaps the answers if the user drops a new one into a full slot
+                    existingAnswer.transform.SetParent(draggable.parentAfterDrag);
+                    draggable.parentAfterDrag = this.transform;
+                }
+            }
         }
-    }
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }

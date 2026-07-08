@@ -38,8 +38,27 @@ namespace RedCross.Playbook.Scenario
             DontDestroyOnLoad(gameObject);
         }
 
-        private void Start() => TrySubscribeToScenarioManager();
-        private void OnDestroy() => UnsubscribeFromScenarioManager();
+        private void Start()
+        {
+            TrySubscribeToScenarioManager();
+            if (UserManager.Instance != null)
+            {
+                UserManager.Instance.OnUserUpdated += OnUserUpdatedHandler;
+            }
+        }
+        private void OnDestroy()
+        {
+            UnsubscribeFromScenarioManager();
+            if (UserManager.Instance != null)
+            {
+                UserManager.Instance.OnUserUpdated -= OnUserUpdatedHandler;
+            }
+        }
+
+        private void OnUserUpdatedHandler(User updatedUser)
+        {
+            OnTotalPointsChanged?.Invoke(TotalPoints);
+        }
 
         // ══════════════════════════════════════════════════════════
         //  SUBSCRIPTION

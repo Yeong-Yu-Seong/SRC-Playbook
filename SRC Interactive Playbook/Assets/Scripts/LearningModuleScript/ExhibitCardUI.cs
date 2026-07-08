@@ -48,7 +48,23 @@ namespace RedCross.Playbook.UI
                 var tex = Resources.Load<Texture2D>(entry.thumbnailUrl);
                 if (tex != null) thumbnail.texture = tex;
             }
-
+            RectTransform rect = GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                float w = entry.cardWidth > 0 ? entry.cardWidth : 300f;
+                float h = entry.cardHeight > 0 ? entry.cardHeight : 240f;
+                rect.sizeDelta = new Vector2(w, h);
+            }
+            if (frameButton != null)
+            {
+                RectTransform frameRt = frameButton.GetComponent<RectTransform>();
+                if (frameRt != null)
+                {
+                    float imgW = entry.imgWidth > 0 ? entry.imgWidth : 700f;
+                    float imgH = entry.imgHeight > 0 ? entry.imgHeight : 526f;
+                    frameRt.sizeDelta = new Vector2(imgW, imgH);
+                }
+            }
             string userId = PlayerPrefs.GetString("userId", "guest");
             FirebaseScenarioService.Instance.FetchUserProgress(userId, entry.id,
                 progress =>
