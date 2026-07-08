@@ -28,7 +28,18 @@ namespace RedCross.Playbook.UI
         //  LIFECYCLE
         // ══════════════════════════════════════════════════════════
 
-        private void Start() => LoadScenarioList();
+        private void Start()
+        {
+            if (FirebaseScenarioService.Instance.IsInitialized)
+            {
+                LoadScenarioList(); // Your method that calls FetchScenarioIndex
+            }
+            else
+            {
+                // Wait for Firebase to connect before fetching
+                FirebaseScenarioService.Instance.OnFirebaseReady += LoadScenarioList;
+            }
+        }
 
         /// <summary>Called by HomepageUIManager on return from ScenarioScene.</summary>
         public void RefreshList() => LoadScenarioList();

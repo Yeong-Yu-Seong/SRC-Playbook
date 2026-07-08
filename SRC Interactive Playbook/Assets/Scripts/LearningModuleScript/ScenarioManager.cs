@@ -56,7 +56,7 @@ namespace RedCross.Playbook.Scenario
         [Header("Quiz Systems")]
         [SerializeField] private MCQ mcqSystem;
         [SerializeField] private FactVsOpinion factsSystem;
-        // [SerializeField] private DragAndDrop dragDropSystem;
+        [SerializeField] private DragAndDrop dragDropSystem;
 
         // ══════════════════════════════════════════════════════════
         //  LIFECYCLE
@@ -187,6 +187,10 @@ namespace RedCross.Playbook.Scenario
                     if (factsSystem != null) factsSystem.StartGame(fetchedQuiz, FinishScenario);
                     else FinishScenario(0, 0, 0);
                     break;
+                case "DragAndDrop":
+                    if (dragDropSystem != null) dragDropSystem.StartGame(fetchedQuiz, FinishScenario);
+                    else FinishScenario(0, 0, 0);
+                    break;
                 default:
                     FinishScenario(0, 0, 0);
                     break;
@@ -254,7 +258,8 @@ namespace RedCross.Playbook.Scenario
             string userId = FirebaseManager.Instance?.CurrentUserId;
             if (!string.IsNullOrEmpty(userId))
             {
-                FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress);
+                FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress,
+                onComplete: () => CheckPostSurveyEligibility(userId));
             }
 
             OnScenarioCompleted?.Invoke(progress);
@@ -264,6 +269,40 @@ namespace RedCross.Playbook.Scenario
                 onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
                 onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
             );
+        }
+
+        private void CheckPostSurveyEligibility(string userId)
+        {
+            // Skip if they've already done the post-survey
+            if (UserManager.Instance.CurrentUser.hasCompletedPostSurvey) return;
+
+            FirebaseScenarioService.Instance.FetchScenarioIndex(index =>
+            {
+                // Filter for only "Main" scenarios
+                var mainScenarios = index.FindAll(s => s.category == "Main");
+                int mainCount = mainScenarios.Count;
+                int completedCount = 0;
+
+                // Check user progress for each main scenario
+                foreach (var scenario in mainScenarios)
+                {
+                    FirebaseScenarioService.Instance.FetchUserProgress(userId, scenario.id, userProgress =>
+                    {
+                        if (userProgress != null && userProgress.completed)
+                        {
+                            completedCount++;
+                        }
+
+                        // If all main scenarios are checked and completed, flag the survey
+                        if (completedCount == mainCount)
+                        {
+                            Debug.Log("[ScenarioManager] All main scenarios completed! Flagging post-survey.");
+                            // You can set a PlayerPref here to tell HomeScene to show the survey on load
+                            PlayerPrefs.SetInt("ShowPostSurvey", 1);
+                        }
+                    });
+                }
+            });
         }
 
         // ══════════════════════════════════════════════════════════

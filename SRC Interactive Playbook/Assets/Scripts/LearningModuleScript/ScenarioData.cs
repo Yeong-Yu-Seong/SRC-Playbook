@@ -24,8 +24,11 @@ namespace RedCross.Playbook.Data
         public string outlineDescription;
         public string thumbnailUrl;
         public bool isPublished;
+        public bool isMainScenario;
         public int pointsOnCompletion;
         public int pointsPerCorrect;
+        //To categorize the scenario
+        public string category; // e.g., "Main", "BiteSized"
 
         /// <summary>
         /// Documents the scoring formula in the DB so it is explicit for admins.
@@ -99,7 +102,9 @@ namespace RedCross.Playbook.Data
         public bool isPublished;
         public int pointsOnCompletion;
         public int totalQuestions;
-
+        public string title;
+        public string characterText;
+        public string outlineDescription;
         /// <summary>
         /// Controls gallery display order.
         /// Firebase RTDB returns object keys lexicographically without this,
@@ -107,6 +112,7 @@ namespace RedCross.Playbook.Data
         /// Query with .orderByChild("sortOrder").
         /// </summary>
         public int sortOrder;
+        public string category;
 
         // ── Museum gallery layout (curator-controlled from Firebase) ──────────
         /// <summary>Horizontal anchored position on the gallery wall canvas.</summary>
@@ -117,6 +123,10 @@ namespace RedCross.Playbook.Data
         public float cardWidth = 300f;
         /// <summary>Height of the exhibit frame RectTransform.</summary>
         public float cardHeight = 240f;
+        public float imgWidth = 700f;
+        public float imgHeight = 526f;
+
+        public bool isMainScenario;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
