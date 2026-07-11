@@ -1,7 +1,7 @@
 /*
     Author: Yeong Yu Seong
     Date: 1 July 2026
-    Last Updated: 4 July 2026
+    Last Updated: 11 July 2026
     Description: This script manages the user's profile information, including displaying, editing, and saving changes to the profile data.
                  It interacts with Firebase Realtime Database and Firebase Authentication to retrieve and update user information.
 */
@@ -32,11 +32,25 @@ public class ProfileManager : MonoBehaviour
 
     [Header("Change Tracking")]
     private bool hasChanges = false;
-    private bool isProfileShown = false;
+    private string currentUser;
     [SerializeField] private TextMeshProUGUI errorText; // TextMeshProUGUI component to display error messages
 
+    public static ProfileManager profileManagerInstance; // Singleton instance of ProfileManager
     private DatabaseReference db;
 
+    private void Awake()
+    {
+        if (profileManagerInstance == null)
+        {
+            profileManagerInstance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+        this.gameObject.SetActive(false); // Disable the script at the start of the game to prevent it from running until needed
+    }
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -47,20 +61,7 @@ public class ProfileManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (FirebaseManager.Instance.CurrentUserId != null && !isProfileShown)
-        {
-            ShowProfile();
-            isProfileShown = true;
-        } else if (FirebaseManager.Instance.CurrentUserId == null)
-        {
-            // Clear profile information when the user logs out
-            for (int i = 0; i < profileTexts.Length; i++)
-            {
-                profileTexts[i].text = "";
-            }
-            profileImage.sprite = null;
-            isProfileShown = false;
-        }
+        
     }
 
     /// <summary>
@@ -80,9 +81,7 @@ public class ProfileManager : MonoBehaviour
             if (snapshot.Exists)
             {
                 profileTexts[0].text = snapshot.Child("username").Value.ToString();
-                profileTexts[1].text = "********"; // Hide the actual password for security reasons
-                profileTexts[2].text = snapshot.Child("email").Value.ToString();
-                //profileImage.sprite = // Load the profile image
+                profileTexts[1].text = snapshot.Child("email").Value.ToString();
             }
             else
             {
@@ -100,7 +99,7 @@ public class ProfileManager : MonoBehaviour
         profilePanel.SetActive(false);
         editPanel.SetActive(true);
         profileInputFields[0].text = profileTexts[0].text; // Populate the username input field with the current username
-        profileInputFields[1].text = profileTexts[2].text; // Populate the email input field with the current email
+        profileInputFields[1].text = profileTexts[1].text; // Populate the email input field with the current email
     }
 
     /// <summary>
@@ -140,7 +139,8 @@ public class ProfileManager : MonoBehaviour
         {
             if (profileInputFields[i].text != profileTexts[i].text)
             {
-                if (i == 1) // If the email field has changed, validate the new email format
+                // If email input is added back, uncomment the following validation for email format
+                /*if (i == 1) // If the email field has changed, validate the new email format
                 {
                     string email = profileInputFields[i].text;
                     if (!email.Contains("@") || !email.Contains("."))
@@ -148,7 +148,7 @@ public class ProfileManager : MonoBehaviour
                         errorText.text = "Invalid email format.";
                         return; // Exit the method if the email format is invalid
                     }
-                }
+                }*/
                 if (i == 0) // If the username field has changed, validate the new username format
                 {
                     string username = profileInputFields[i].text;
@@ -179,7 +179,7 @@ public class ProfileManager : MonoBehaviour
 
         // Update the profileTexts to reflect the changes
         profileTexts[0].text = newUsername;
-        profileTexts[2].text = newEmail;
+        profileTexts[1].text = newEmail;
     }
 
     /// <summary>
@@ -209,5 +209,17 @@ public class ProfileManager : MonoBehaviour
         profilePanel.SetActive(true);
         editPanel.SetActive(false);
         errorText.text = ""; // Clear any error messages when canceling changes
+    }
+
+    /// <summary>
+    /// Clears the profile information displayed in the UI elements, resetting them to their default state.
+    /// This method is typically called when the user logs out or when the profile information needs to be cleared for any reason.
+    /// </summary>
+    public void ClearProfile()
+    {
+        FirebaseManager.Instance.Logout(); // Log out the user from Firebase Authentication
+        UIManager.Instance.ShowLanding(); // Show the landing page after logout
+        profileTexts[0].text = ""; // Clear the username text
+        profileTexts[1].text = ""; // Clear the email text
     }
 }
