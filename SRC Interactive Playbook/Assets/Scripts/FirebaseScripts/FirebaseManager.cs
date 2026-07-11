@@ -245,16 +245,23 @@ public class FirebaseManager : MonoBehaviour
     // ══════════════════════════════════════════════════════════════════════════
 
     public void RecordQuizCompletion(string quizId, int pointsEarned,
-                                     int correctAnswers, int totalQuestions,
-                                     Dictionary<string, string> answers,
-                                     User currentUser,
-                                     Action<User> onSuccess,
-                                     Action<string> onError)
+                                 int correctAnswers, int totalQuestions,
+                                 Dictionary<string, string> answers,
+                                 User currentUser,
+                                 Action<User> onSuccess,
+                                 Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
 
-        // writes to playbook/quiz_progress/{uid}/{quizId}
         currentUser.score += pointsEarned;
+
+        // Convert to Dictionary<string, object> — required for correct RTDB serialization
+        var answersObj = new Dictionary<string, object>();
+        if (answers != null)
+        {
+            foreach (var kvp in answers)
+                answersObj[kvp.Key] = kvp.Value;
+        }
 
         var quizProgressEntry = new Dictionary<string, object>
         {
@@ -263,7 +270,7 @@ public class FirebaseManager : MonoBehaviour
             { "score",          pointsEarned },
             { "correctAnswers", correctAnswers },
             { "totalQuestions", totalQuestions },
-            { "answers",        answers ?? new Dictionary<string, string>() }
+            { "answers",        answersObj }
         };
 
         // Write quiz_progress
@@ -318,7 +325,49 @@ public class FirebaseManager : MonoBehaviour
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  CHEATSHEET ACCESS TRACKING (NEW)
+    //  SURVEYS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public void RecordPulseSurvey(string surveyType, Dictionary<string, object> answers,
+                                  User currentUser, Action<User> onSuccess, Action<string> onError)
+    {
+        if (!AssertAuthenticated(onError)) return;
+
+        var surveyEntry = new Dictionary<string, object>
+    {
+        { "completedAt", DateTimeOffset.UtcNow.ToUnixTimeSeconds() },
+        { "answers", answers }
+    };
+
+        // Store in playbook/surveys/{uid}/{surveyType}
+        _db.Child("playbook").Child("surveys")
+           .Child(CurrentUserId).Child(surveyType)
+           .SetValueAsync(surveyEntry)
+           .ContinueWithOnMainThread(task =>
+           {
+               if (task.IsCanceled || task.IsFaulted)
+               {
+                   HandleTaskError(task, $"RecordPulseSurvey ({surveyType})", onError);
+                   return;
+               }
+
+               // Update the boolean flag on the user document
+               string flagField = surveyType == "pre_survey" ? "hasCompletedPreSurvey" : "hasCompletedPostSurvey";
+
+               UpdateUserField(flagField, true,
+               () =>
+               {
+                   if (surveyType == "pre_survey") currentUser.hasCompletedPreSurvey = true;
+                   else currentUser.hasCompletedPostSurvey = true;
+
+                   Debug.Log($"[FirebaseManager] Survey '{surveyType}' saved.");
+                   onSuccess(currentUser);
+               }, onError);
+           });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CHEATSHEET ACCESS TRACKING
     // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>

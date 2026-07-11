@@ -27,6 +27,8 @@ public class User
 
     /// <summary>Unix timestamp (seconds) of most recent login.</summary>
     public long lastLoginAt;
+    public bool hasCompletedPreSurvey;
+    public bool hasCompletedPostSurvey;
 
     // ── In-memory completion history (NOT written to Firebase as part of this doc) ──
     /// <summary>
@@ -55,6 +57,8 @@ public class User
         this.score = 0;
         this.createdAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         this.lastLoginAt = 0;
+        this.hasCompletedPreSurvey = false;
+        this.hasCompletedPostSurvey = false;
     }
 }
 

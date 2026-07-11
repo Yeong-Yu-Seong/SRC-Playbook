@@ -23,6 +23,7 @@ namespace RedCross.Playbook.Firebase
     {
         // ── Singleton ──────────────────────────────────────────────
         public static FirebaseScenarioService Instance { get; private set; }
+        public bool IsInitialized { get; internal set; }
 
         [Header("Firebase Config")]
         [SerializeField] private string dbRootNode = "playbook";
@@ -96,10 +97,6 @@ namespace RedCross.Playbook.Firebase
         }
 
         /// <summary>
-        /// FIXED: now accepts scenarioId as an explicit parameter.
-        /// Old signature used progress.scenarioId as the node key, which broke
-        /// once scenarioId was removed as a written field from UserScenarioProgress.
-        /// The node key and the document content are now cleanly separated.
         /// </summary>
         public void SaveUserProgress(string userId, string scenarioId,
                                      UserScenarioProgress progress,
@@ -122,11 +119,6 @@ namespace RedCross.Playbook.Firebase
 
         private void FetchIndexFromFirebase(Action<List<ScenarioIndexEntry>> onComplete)
         {
-            // FIXED: previous version called FetchIndexFromLocal(onComplete) immediately
-            // after starting the async request — both paths fired on every call.
-            // Now local fallback is only called inside the async callback on failure.
-            // FIXED: added .OrderByChild("sortOrder") so gallery display order is
-            // controlled by the curator via the sortOrder field, not key lexicography.
             _dbRef.Child(dbRootNode).Child("scenarios_index")
                   .OrderByChild("sortOrder")
                   .GetValueAsync()
@@ -162,8 +154,6 @@ namespace RedCross.Playbook.Firebase
                                                Action<PlaybookScenario> onComplete,
                                                Action<string> onError)
         {
-            // FIXED: same double-fire bug as FetchIndexFromFirebase — local fallback
-            // was called unconditionally on the same frame. Now only called on failure.
             _dbRef.Child(dbRootNode).Child("scenarios").Child(id)
                   .GetValueAsync()
                   .ContinueWithOnMainThread(task =>
@@ -227,9 +217,6 @@ namespace RedCross.Playbook.Firebase
                                             UserScenarioProgress progress,
                                             Action onComplete)
         {
-            // FIXED: was using progress.scenarioId as the node key.
-            // progress.scenarioId is now [Obsolete] — the explicit scenarioId
-            // parameter is used as the key so the field and the node are never out of sync.
             string json = JsonConvert.SerializeObject(progress);
 
             _dbRef.Child(dbRootNode).Child("user_progress")
@@ -370,8 +357,6 @@ namespace RedCross.Playbook.Firebase
                                                 UserScenarioProgress progress,
                                                 Action onComplete)
         {
-            // FIXED: was using progress.scenarioId as the key — now uses the
-            // explicit scenarioId parameter, consistent with the Firebase path.
             PlayerPrefs.SetString(ProgressKey(userId, scenarioId),
                                   JsonConvert.SerializeObject(progress));
             PlayerPrefs.Save();

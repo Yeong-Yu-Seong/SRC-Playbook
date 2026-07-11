@@ -47,13 +47,13 @@ public class ScenarioCompleteUI : MonoBehaviour
         scenarioTitleText.text = scenario.title;
 
         // 1. Scenario Breakdown
-        scenarioStatsText.text = $"Scenario Choices: {scenarioProgress.correctAnswers}/{scenarioProgress.totalQuestions} (+{scenarioProgress.score} pts)";
+        scenarioStatsText.text = $"Scenario Score: {scenarioProgress.correctAnswers}/{scenarioProgress.totalQuestions} (+{scenarioProgress.score} pts)";
 
         // 2. Quiz Breakdown
         if (quizTotal > 0)
         {
             quizStatsText.gameObject.SetActive(true);
-            quizStatsText.text = $"Assessment Quiz: {quizCorrect}/{quizTotal} (+{quizPoints} pts)";
+            quizStatsText.text = $"Quiz Score: {quizCorrect}/{quizTotal} (+{quizPoints} pts)";
         }
         else
         {

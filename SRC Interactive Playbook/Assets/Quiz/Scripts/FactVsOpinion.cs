@@ -102,13 +102,17 @@ public class FactVsOpinion : MonoBehaviour
         var q = _quizData.questions[_questionIndex];
         if (statementText != null) statementText.text = q.prompt;
         if (questionNumberText != null) questionNumberText.text =
-            $"Question: {_questionIndex + 1}/{_quizData.questions.Count}";
+            $"Qn: {_questionIndex + 1}/{_quizData.questions.Count}";
 
         if (mascotImage != null && mascotSprites.Length > 0)
             mascotImage.sprite = mascotSprites[0];
 
         foreach (Button btn in optionButtons)
         {
+            ColorBlock cb = btn.colors;
+            cb.disabledColor = new Color(0.78f, 0.78f, 0.78f, 0.5f);
+            btn.colors = cb;
+
             btn.interactable = true;
             var img = btn.GetComponent<Image>();
             if (img != null) img.color = Color.white;
@@ -142,8 +146,10 @@ public class FactVsOpinion : MonoBehaviour
 
         foreach (Button btn in optionButtons)
         {
-            var img = btn.GetComponent<Image>();
-            if (img != null) img.color = feedbackColor;
+            // Inject the feedback color directly into the disabled state!
+            ColorBlock cb = btn.colors;
+            cb.disabledColor = feedbackColor;
+            btn.colors = cb;
         }
 
         StartCoroutine(AdvanceAfterDelay());
@@ -151,7 +157,7 @@ public class FactVsOpinion : MonoBehaviour
 
     private IEnumerator AdvanceAfterDelay()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
 
         if (_questionIndex < _quizData.questions.Count - 1)
         {

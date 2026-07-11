@@ -20,6 +20,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private string _leaderboardName = "LeaderboardPanel";
     [SerializeField] private string _cheatsheetName = "CheatsheetPanel";
     [SerializeField] private string _profileName = "ProfilePanel";
+    [SerializeField] private string _presurveyName = "PresurveyPanel";
+    [SerializeField] private string _postsurveyName = "PostsurveyPanel";
     [SerializeField] private string _homeSceneName = "HomeScene";
 
     // ── Live references (re-resolved on every HomeScene load) ──
@@ -30,6 +32,8 @@ public class UIManager : MonoBehaviour
     private GameObject _leaderboardPanel;
     private GameObject _cheatsheetPanel;
     private GameObject _profilePanel;
+    private GameObject _presurveyPanel;
+    private GameObject _postsurveyPanel;
 
     // ══════════════════════════════════════════════════════════
     // Lifecycle
@@ -103,10 +107,22 @@ public class UIManager : MonoBehaviour
         SetAll(false);
         Set(_homepagePanel, true);
 
-        // Show navbar — this is the first call after login/signup
-        // NavBarController.ShowNavBar() activates it and switches
-        // to the requested tab (default: Modules)
+        // Check if pre-survey is done
+        if (UserManager.Instance?.CurrentUser != null && !UserManager.Instance.CurrentUser.hasCompletedPreSurvey)
+        {
+            ShowPreSurvey();
+            return;
+        }
+
+        Set(_homepagePanel, true);
         GetNavBar()?.ShowNavBar();
+    }
+
+    public void ShowPreSurvey()
+    {
+        SetAll(false);
+        Set(_presurveyPanel, true);
+        GetNavBar()?.HideNavBar();
     }
 
     public void ShowLeaderboard()
@@ -133,6 +149,8 @@ public class UIManager : MonoBehaviour
         _leaderboardPanel = FindInScene(_leaderboardName);
         _cheatsheetPanel = FindInScene(_cheatsheetName);
         _profilePanel = FindInScene(_profileName);
+        _presurveyPanel = FindInScene(_presurveyName);
+        _postsurveyPanel = FindInScene(_postsurveyName);
     }
 
     private GameObject FindInScene(string goName)
@@ -179,6 +197,8 @@ public class UIManager : MonoBehaviour
         Set(_leaderboardPanel, active);
         Set(_cheatsheetPanel, active);
         Set(_profilePanel, active);
+        Set(_presurveyPanel, active);
+        Set(_postsurveyPanel, active);
     }
 
     private void Set(GameObject panel, bool active)
