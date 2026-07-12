@@ -12,6 +12,7 @@ using Firebase.Database;
 using Firebase.Extensions;
 using RedCross.Playbook.Data;
 using UnityEngine;
+using Google;
 
 public class FirebaseManager : MonoBehaviour
 {
@@ -29,6 +30,11 @@ public class FirebaseManager : MonoBehaviour
     private bool IsAuthenticated =>
         _auth?.CurrentUser != null &&
         !string.IsNullOrEmpty(_auth.CurrentUser.UserId);
+
+    [Header("Google Auth")]
+    // Find this in Firebase Console -> Authentication -> Google -> Web SDK Configuration
+    public string webClientId = "523506094253-l26d90stcmgrprfsho1iph3rejequ2pj.apps.googleusercontent.com";
+    private GoogleSignInConfiguration _googleConfiguration;
 
     // ══════════════════════════════════════════════════════════════════════════
     //  LIFECYCLE
@@ -56,6 +62,16 @@ public class FirebaseManager : MonoBehaviour
                 Debug.LogError($"[FirebaseManager] Dependency error: {task.Result}");
             }
         });
+    }
+
+    private void InitializeGoogleAuth()
+    {
+        _googleConfiguration = new GoogleSignInConfiguration
+        {
+            WebClientId = webClientId,
+            RequestIdToken = true,
+            RequestEmail = true
+        };
     }
 
     // OnApplicationQuit: no longer calls SetUserOffline — isLoggedIn is removed.
@@ -107,6 +123,115 @@ public class FirebaseManager : MonoBehaviour
 
                 LoadUserDocument(onSuccess, onError);
             });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  AUTHENTICATION — GOOGLE
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public void LoginWithGoogle(Action<User> onSuccess, Action<string> onError)
+    {
+        if (!_isInitialized) { onError("Firebase not ready."); return; }
+
+#if UNITY_EDITOR
+        // 🛑 EDITOR MOCK LOGIC: Bypasses the real Google Auth so you can test on PC!
+        Debug.Log("<color=yellow>[FirebaseManager] Editor detected: Mocking Google Login.</color>");
+
+        User mockUser = new User("EditorTester", "tester@google.com")
+        {
+            score = 999, // Give yourself some points to test the leaderboard!
+            hasCompletedPreSurvey = true
+        };
+
+        onSuccess(mockUser);
+        return; // Stop here so it doesn't run the real mobile code below!
+#endif
+
+        // 1. Configure Google Sign-In
+        GoogleSignIn.Configuration = new GoogleSignInConfiguration
+        {
+            RequestIdToken = true,
+            // Paste the Web Client ID you copied from Firebase Console here:
+            WebClientId = "523506094253-l26d90stcmgrprfsho1iph3rejequ2pj.apps.googleusercontent.com"
+        };
+
+        // 2. Trigger the Google pop-up
+        GoogleSignIn.DefaultInstance.SignIn().ContinueWithOnMainThread(googleTask =>
+        {
+            if (googleTask.IsCanceled || googleTask.IsFaulted)
+            {
+                onError("Google Sign-In canceled or failed.");
+                return;
+            }
+
+            // 3. We got the token! Now convert it to a Firebase Credential
+            Credential credential = GoogleAuthProvider.GetCredential(googleTask.Result.IdToken, null);
+
+            // 4. Sign into Firebase using that credential
+            FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential).ContinueWithOnMainThread(authTask =>
+            {
+                if (authTask.IsCanceled || authTask.IsFaulted)
+                {
+                    HandleTaskError(authTask, "Google Firebase Auth", onError);
+                    return;
+                }
+
+                FirebaseUser user = authTask.Result;
+
+                // 5. Check if they are a brand new user or a returning user
+                CheckOrCreateGoogleUser(user, onSuccess, onError);
+            });
+        });
+    }
+
+    private void CheckOrCreateGoogleUser(FirebaseUser firebaseUser, Action<User> onSuccess, Action<string> onError)
+    {
+        // Try to load their document
+        _db.Child("users").Child(firebaseUser.UserId).GetValueAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCanceled || task.IsFaulted)
+            {
+                HandleTaskError(task, "Check Google User", onError);
+                return;
+            }
+
+            DataSnapshot snap = task.Result;
+
+            if (snap.Exists)
+            {
+                // RETURNING USER: Parse data and update last login
+                User existingUser = JsonUtility.FromJson<User>(snap.GetRawJsonValue());
+                UpdateUserField("lastLoginAt", DateTimeOffset.UtcNow.ToUnixTimeSeconds(), () => { }, _ => { });
+                Debug.Log($"[FirebaseManager] Welcome back Google user: {existingUser.username}");
+                onSuccess(existingUser);
+            }
+            else
+            {
+                // BRAND NEW USER: Create a document using their Google profile info
+                string newUsername = string.IsNullOrEmpty(firebaseUser.DisplayName) ? "Google User" : firebaseUser.DisplayName;
+                string newEmail = firebaseUser.Email;
+
+                var newUser = new User(newUsername, newEmail)
+                {
+                    lastLoginAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    createdAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    score = 0
+                };
+
+                // Save to database
+                _db.Child("users").Child(firebaseUser.UserId).SetRawJsonValueAsync(JsonUtility.ToJson(newUser))
+                   .ContinueWithOnMainThread(saveTask =>
+                   {
+                       if (saveTask.IsCanceled || saveTask.IsFaulted)
+                       {
+                           HandleTaskError(saveTask, "Create Google User", onError);
+                           return;
+                       }
+                       Debug.Log($"[FirebaseManager] Created new Google user: {newUser.username}");
+                       onSuccess(newUser);
+                   });
+            }
+        });
     }
 
     // ══════════════════════════════════════════════════════════════════════════

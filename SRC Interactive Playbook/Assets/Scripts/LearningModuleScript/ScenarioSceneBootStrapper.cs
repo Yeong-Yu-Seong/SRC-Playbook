@@ -16,16 +16,16 @@ namespace RedCross.Playbook.UI
         public static string PendingScenarioId = "";
 
         [Header("Scene references")]
-        [Tooltip("Drag the MobileLayout GameObject here so the bootstrapper can ensure it starts active.")]
-        [SerializeField] private GameObject mobileLayout;
+        [Tooltip("Drag the MasterCanvas GameObject here so the bootstrapper can ensure it starts active.")]
+        [SerializeField] private GameObject masterCanvas;
 
         private void Start()
         {
-            if (mobileLayout != null)
-                mobileLayout.SetActive(true);
+            if (masterCanvas != null)
+                masterCanvas.SetActive(true);
             else
                 Debug.LogWarning("[ScenarioSceneBootstrapper] MobileLayout not assigned. " +
-                                 "Drag MobileLayout from the Hierarchy into this component's slot.");
+                                 "Drag MasterCanvas from the Hierarchy into this component's slot.");
 
             StartCoroutine(StartAfterFrame());
         }

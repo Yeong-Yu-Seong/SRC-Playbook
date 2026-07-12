@@ -26,13 +26,31 @@ namespace RedCross.Playbook.Scenario
         public static ScenarioManager Instance { get; private set; }
 
         // ── Inspector slots ────────────────────────────────────────
-        [Header("UI Panels")]
-        [SerializeField] private ScenarioIntroUI introUI;
-        [SerializeField] private NarrativePartUI narrativeUI;
-        [SerializeField] private QuestionPartUI questionUI;
-        [SerializeField] private FeedbackUI feedbackUI;
-        [SerializeField] private ScenarioCompleteUI completeUI;
-        [SerializeField] private LoadingOverlayUI loadingUI;
+
+        [Header("Mobile UI Panels")]
+        [SerializeField] private ScenarioIntroUI mobileIntroUI;
+        [SerializeField] private NarrativePartUI mobileNarrativeUI;
+        [SerializeField] private QuestionPartUI mobileQuestionUI;
+        [SerializeField] private FeedbackUI mobileFeedbackUI;
+        [SerializeField] private ScenarioCompleteUI mobileCompleteUI;
+        [SerializeField] private LoadingOverlayUI mobileLoadingUI;
+
+        [Header("Desktop UI Panels")]
+        [SerializeField] private ScenarioIntroUI desktopIntroUI;
+        [SerializeField] private NarrativePartUI desktopNarrativeUI;
+        [SerializeField] private QuestionPartUI desktopQuestionUI;
+        [SerializeField] private FeedbackUI desktopFeedbackUI;
+        [SerializeField] private ScenarioCompleteUI desktopCompleteUI;
+        [SerializeField] private LoadingOverlayUI desktopLoadingUI;
+
+        // ── Dynamic UI Routers ─────────────────────────────────────
+        // These magically return the correct panel based on screen size!
+        private ScenarioIntroUI introUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileIntroUI : desktopIntroUI;
+        private NarrativePartUI narrativeUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileNarrativeUI : desktopNarrativeUI;
+        private QuestionPartUI questionUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileQuestionUI : desktopQuestionUI;
+        private FeedbackUI feedbackUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileFeedbackUI : desktopFeedbackUI;
+        private ScenarioCompleteUI completeUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileCompleteUI : desktopCompleteUI;
+        private LoadingOverlayUI loadingUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileLoadingUI : desktopLoadingUI;
 
         [Header("Background")]
         [SerializeField] private UnityEngine.UI.RawImage backgroundImage;
@@ -49,14 +67,33 @@ namespace RedCross.Playbook.Scenario
         public event Action<int> OnPointsAwarded;
         public event Action<UserScenarioProgress> OnScenarioCompleted;
 
-        [Header("Quiz Transition UI")]
-        [SerializeField] private GameObject quizStartPanel;
-        [SerializeField] private UnityEngine.UI.Button startQuizButton;
+        // ── Mobile Quiz Elements ───────────────────────────────────
+        [Header("Mobile Quiz Transition UI")]
+        [SerializeField] private GameObject mobileQuizStartPanel;
+        [SerializeField] private UnityEngine.UI.Button mobileStartQuizButton;
 
-        [Header("Quiz Systems")]
-        [SerializeField] private MCQ mcqSystem;
-        [SerializeField] private FactVsOpinion factsSystem;
-        [SerializeField] private DragAndDrop dragDropSystem;
+        [Header("Mobile Quiz Systems")]
+        [SerializeField] private MCQ mobileMcqSystem;
+        [SerializeField] private FactVsOpinion mobileFactsSystem;
+        [SerializeField] private DragAndDrop mobileDragDropSystem;
+
+        // ── Desktop Quiz Elements ──────────────────────────────────
+        [Header("Desktop Quiz Transition UI")]
+        [SerializeField] private GameObject desktopQuizStartPanel;
+        [SerializeField] private UnityEngine.UI.Button desktopStartQuizButton;
+
+        [Header("Desktop Quiz Systems")]
+        [SerializeField] private MCQ desktopMcqSystem;
+        [SerializeField] private FactVsOpinion desktopFactsSystem;
+        [SerializeField] private DragAndDrop desktopDragDropSystem;
+
+        // ── Dynamic Quiz Routers ───────────────────────────────────
+        private GameObject quizStartPanel => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileQuizStartPanel : desktopQuizStartPanel;
+        private UnityEngine.UI.Button startQuizButton => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileStartQuizButton : desktopStartQuizButton;
+
+        private MCQ mcqSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileMcqSystem : desktopMcqSystem;
+        private FactVsOpinion factsSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileFactsSystem : desktopFactsSystem;
+        private DragAndDrop dragDropSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileDragDropSystem : desktopDragDropSystem;
 
         // ══════════════════════════════════════════════════════════
         //  LIFECYCLE
@@ -110,7 +147,7 @@ namespace RedCross.Playbook.Scenario
 
         private void ShowIntro()
         {
-            UIManager.Instance.GetNavBar()?.ShowNavBar();
+            foreach (var nav in UIManager.Instance.GetAllNavBars()) nav.ShowNavBar();
             introUI.Show(_scenario, onEnterClicked: () =>
             {
                 introUI.Hide();
@@ -123,7 +160,7 @@ namespace RedCross.Playbook.Scenario
         {
             if (_currentPartIndex >= _scenario.sceneParts.Count)
             {
-                CheckForQuizAssessment(); // Replaced FinishScenario()
+                CheckForQuizAssessment();
                 return;
             }
 
@@ -237,18 +274,18 @@ namespace RedCross.Playbook.Scenario
         // ══════════════════════════════════════════════════════════
         //  COMPLETION
         // ══════════════════════════════════════════════════════════
-
-        // Now accepts the three integers passed back by the Quiz Action callback
         private void FinishScenario(int quizCorrect, int quizTotal, int quizPointsEarned)
         {
             _isRunning = false;
-            _pointsEarned += _scenario.pointsOnCompletion;
+
+            // Calculate the total points earned in THIS specific run
+            int currentRunScore = _pointsEarned + _scenario.pointsOnCompletion;
             OnPointsAwarded?.Invoke(_scenario.pointsOnCompletion);
 
             var progress = new UserScenarioProgress
             {
                 completed = true,
-                score = _pointsEarned,
+                score = currentRunScore,
                 correctAnswers = _correctAnswers,
                 totalQuestions = _totalQuestions,
                 completedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
@@ -258,17 +295,55 @@ namespace RedCross.Playbook.Scenario
             string userId = FirebaseManager.Instance?.CurrentUserId;
             if (!string.IsNullOrEmpty(userId))
             {
-                FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress,
-                onComplete: () => CheckPostSurveyEligibility(userId));
+                // 1. Fetch previous progress to calculate the score delta
+                FirebaseScenarioService.Instance.FetchUserProgress(userId, _scenario.id, previousProgress =>
+                {
+                    int previousBestScore = previousProgress != null ? previousProgress.score : 0;
+
+                    // Calculate how many NEW points they earned (if any)
+                    int scoreDelta = currentRunScore - previousBestScore;
+
+                    // Check if this run is a new high score
+                    bool isNewHighScore = scoreDelta > 0;
+
+                    // 2. Only award points to their global total if they beat their high score
+                    if (isNewHighScore && UserManager.Instance != null)
+                    {
+                        UserManager.Instance.AwardSimulationPoints(_scenario.id, scoreDelta);
+                    }
+
+                    // 3. Only overwrite the scenario progress in the database if it's a new high score
+                    if (currentRunScore >= previousBestScore)
+                    {
+                        FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress,
+                            onComplete: () => CheckPostSurveyEligibility(userId));
+                    }
+                    else
+                    {
+                        CheckPostSurveyEligibility(userId);
+                    }
+
+                    // 4. Trigger UI and Events INSIDE the callback so it waits for the calculation
+                    OnScenarioCompleted?.Invoke(progress);
+
+                    completeUI.Show(progress, _scenario, quizCorrect, quizTotal, quizPointsEarned,
+                        isNewHighScore, // Now safely in scope!
+                        onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
+                        onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
+                    );
+                });
             }
+            else
+            {
+                // Fallback in case the user is somehow not logged in (e.g., testing offline)
+                OnScenarioCompleted?.Invoke(progress);
 
-            OnScenarioCompleted?.Invoke(progress);
-
-            // Pass the newly acquired quiz stats directly into the unified Complete UI
-            completeUI.Show(progress, _scenario, quizCorrect, quizTotal, quizPointsEarned,
-                onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
-                onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
-            );
+                completeUI.Show(progress, _scenario, quizCorrect, quizTotal, quizPointsEarned,
+                    true, // Default to true if no previous data exists
+                    onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
+                    onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
+                );
+            }
         }
 
         private void CheckPostSurveyEligibility(string userId)
@@ -346,12 +421,18 @@ namespace RedCross.Playbook.Scenario
 
         private void ValidateReferences()
         {
-            CheckRef(introUI, "Intro UI");
-            CheckRef(narrativeUI, "Narrative UI");
-            CheckRef(questionUI, "Question UI");
-            CheckRef(feedbackUI, "Feedback UI");
-            CheckRef(completeUI, "Complete UI");
-            CheckRef(loadingUI, "Loading UI");
+            CheckRef(mobileIntroUI, "Mobile Intro UI");
+            CheckRef(desktopIntroUI, "Desktop Intro UI");
+            CheckRef(mobileNarrativeUI, "Mobile Narrative UI");
+            CheckRef(desktopNarrativeUI, "Desktop Narrative UI");
+            CheckRef(mobileQuestionUI, "Mobile Question UI");
+            CheckRef(desktopQuestionUI, "Desktop Question UI");
+            CheckRef(mobileFeedbackUI, "Mobile Feedback UI");
+            CheckRef(desktopFeedbackUI, "Desktop Feedback UI");
+            CheckRef(mobileCompleteUI, "Mobile Complete UI");
+            CheckRef(desktopCompleteUI, "Desktop Complete UI");
+            CheckRef(mobileLoadingUI, "Mobile Loading UI");
+            CheckRef(desktopLoadingUI, "Desktop Loading UI");
         }
 
         private void CheckRef(MonoBehaviour mb, string label)

@@ -56,6 +56,25 @@ public class LoginUIManager : MonoBehaviour
         );
     }
 
+    public void OnGoogleLoginPressed()
+    {
+        SetLoading(true);
+
+        FirebaseManager.Instance.LoginWithGoogle(
+            onSuccess: user =>
+            {
+                SetLoading(false);
+                UserManager.Instance.SetUserData(user);
+                UIManager.Instance.ShowHomepage();
+            },
+            onError: err =>
+            {
+                SetLoading(false);
+                ShowError(err);
+            }
+        );
+    }
+
     /// <summary>Navigates to the Sign-Up screen.</summary>
     public void OnGoToSignupPressed() => UIManager.Instance.ShowSignup();
 

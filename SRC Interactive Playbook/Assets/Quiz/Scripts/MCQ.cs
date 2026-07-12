@@ -30,11 +30,6 @@ public class MCQ : MonoBehaviour
     public TextMeshProUGUI answerQuestionText;
     public TextMeshProUGUI answerText;
 
-    // ── Inspector: Complete Panel ──────────────────────────────
-    [Header("Quiz Complete Panel")]
-    [SerializeField] private GameObject quizCompletePanel;
-    [SerializeField] private TextMeshProUGUI completeScoreText;
-    [SerializeField] private TextMeshProUGUI completePointsText;
     // ── Runtime ────────────────────────────────────────────────
     private PlaybookQuiz _quizData;
     private int _questionIndex = 0;
@@ -52,7 +47,6 @@ public class MCQ : MonoBehaviour
 
     private void Awake()
     {
-        if (quizCompletePanel != null) quizCompletePanel.SetActive(false);
         if (gamePanel != null) gamePanel.SetActive(false);
     }
 
@@ -85,7 +79,6 @@ public class MCQ : MonoBehaviour
         _pointsEarned = 0;
         _capturedAnswers.Clear();
 
-        if (quizCompletePanel != null) quizCompletePanel.SetActive(false);
         if (answerPanel != null) answerPanel.SetActive(false);
         if (gamePanel != null) gamePanel.SetActive(true);
 
