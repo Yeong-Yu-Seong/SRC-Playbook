@@ -122,6 +122,8 @@ public class FirebaseManager : MonoBehaviour
                     DateTimeOffset.UtcNow.ToUnixTimeSeconds(), () => { }, _ => { });
 
                 LoadUserDocument(onSuccess, onError);
+                ProfileManager.profileManagerInstance.gameObject.SetActive(true); // Enable the ProfileManager script when the user logs in
+                ProfileManager.profileManagerInstance.ShowProfile(); // Call ShowProfile to display the user's profile information
             });
     }
 
