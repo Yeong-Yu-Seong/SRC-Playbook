@@ -63,34 +63,55 @@ namespace RedCross.Playbook.UI
             foreach (var c in _spawnedCards) Destroy(c);
             _spawnedCards.Clear();
 
+            // ── NEW: Filter by Track ──────────────────────────────────────
+            string userTrack = UserManager.Instance?.CurrentUser?.selectedTrack;
+
+            if (entries != null)
+            {
+                entries = entries.FindAll(entry =>
+                    string.IsNullOrEmpty(entry.track) || // Failsafe for older database entries
+                    entry.track == "Both" ||             // Shared content
+                    entry.track == userTrack             // Matches the user's chosen track
+                );
+            }
+            // ──────────────────────────────────────────────────────────────
+
             if (entries == null || entries.Count == 0)
             {
                 if (emptyState != null) emptyState.SetActive(true);
                 return;
             }
 
-            // FIXED: Firebase returns entries already ordered by sortOrder (via
-            // .orderByChild("sortOrder") in FetchIndexFromFirebase). Local fallback
-            // also sorts before returning. Belt-and-suspenders sort here as well.
+            // Belt-and-suspenders sort
             entries.Sort((a, b) => a.sortOrder.CompareTo(b.sortOrder));
 
             foreach (var entry in entries)
             {
-                // Instantiate without parenting first so we can set RectTransform freely
                 var go = Instantiate(exhibitCardPrefab, cardContainer, false);
 
-                // Now each card is placed at its curator-specified wall position and size
-                // using the wallX/wallY/cardWidth/cardHeight fields from Firebase.
-                // The cardContainer must NOT have a LayoutGroup component attached —
-                // remove any GridLayoutGroup or VerticalLayoutGroup from it in the Inspector.
                 var rt = go.GetComponent<RectTransform>();
                 if (rt != null)
                 {
-                    rt.anchorMin = new Vector2(0f, 1f);   // top-left anchor
+                    rt.anchorMin = new Vector2(0f, 1f);
                     rt.anchorMax = new Vector2(0f, 1f);
                     rt.pivot = new Vector2(0f, 1f);
-                    rt.anchoredPosition = new Vector2(entry.wallX, -entry.wallY);
-                    rt.sizeDelta = new Vector2(entry.cardWidth, entry.cardHeight);
+
+                    // 1. Grab the Firebase coordinates
+                    float finalX = entry.wallX;
+                    float finalY = entry.wallY;
+
+                    // 2. If we are on Desktop, scale the coordinates up to match the 1920x1080 canvas!
+                    if (!ResponsiveLayoutManager.Instance.IsMobileActive)
+                    {
+                        finalX *= (1206f / 1920f);
+
+                        finalY *= (1206f / 1920f);
+                    }
+
+                    // 3. Apply the scaled coordinates
+                    rt.anchoredPosition = new Vector2(finalX, -finalY);
+
+                    // (Don't set sizeDelta here anymore, since we moved the sizing logic inside ExhibitCardUI in the previous fix!)
                 }
 
                 var card = go.GetComponent<ExhibitCardUI>();

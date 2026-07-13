@@ -29,6 +29,7 @@ namespace RedCross.Playbook.Data
         public int pointsPerCorrect;
         //To categorize the scenario
         public string category; // e.g., "Main", "BiteSized"
+        public string track;
 
         /// <summary>
         /// Documents the scoring formula in the DB so it is explicit for admins.
@@ -105,6 +106,8 @@ namespace RedCross.Playbook.Data
         public string title;
         public string characterText;
         public string outlineDescription;
+        public string category;
+        public string track;
         /// <summary>
         /// Controls gallery display order.
         /// Firebase RTDB returns object keys lexicographically without this,
@@ -112,7 +115,6 @@ namespace RedCross.Playbook.Data
         /// Query with .orderByChild("sortOrder").
         /// </summary>
         public int sortOrder;
-        public string category;
 
         // ── Museum gallery layout (curator-controlled from Firebase) ──────────
         /// <summary>Horizontal anchored position on the gallery wall canvas.</summary>

@@ -48,22 +48,40 @@ namespace RedCross.Playbook.UI
                 var tex = Resources.Load<Texture2D>(entry.thumbnailUrl);
                 if (tex != null) thumbnail.texture = tex;
             }
+            // 1. Grab the base sizes from Firebase (or use defaults)
+            float finalWidth = entry.cardWidth > 0 ? entry.cardWidth : 300f;
+            float finalHeight = entry.cardHeight > 0 ? entry.cardHeight : 240f;
+
+            float finalImgWidth = entry.imgWidth > 0 ? entry.imgWidth : 700f;
+            float finalImgHeight = entry.imgHeight > 0 ? entry.imgHeight : 526f;
+
+            // 2. If we are on Desktop, scale the sizes up using the same math!
+            if (!ResponsiveLayoutManager.Instance.IsMobileActive)
+            {
+                float scaleX = 1206f / 1920f;
+                //float scaleY = 2622f / 1080f; 
+
+                finalWidth *= scaleX;
+                finalHeight *= scaleX;
+
+                finalImgWidth *= scaleX;
+                finalImgHeight *= scaleX;
+            }
+
+            // 3. Apply the final scaled sizes to the RectTransforms
             RectTransform rect = GetComponent<RectTransform>();
             if (rect != null)
             {
-                float w = entry.cardWidth > 0 ? entry.cardWidth : 300f;
-                float h = entry.cardHeight > 0 ? entry.cardHeight : 240f;
-                rect.sizeDelta = new Vector2(w, h);
+                rect.sizeDelta = new Vector2(finalWidth, finalHeight);
             }
+
             if (frameButton != null)
             {
                 RectTransform frameRt = frameButton.GetComponent<RectTransform>();
-                if (frameRt != null)
-                {
-                    float imgW = entry.imgWidth > 0 ? entry.imgWidth : 700f;
-                    float imgH = entry.imgHeight > 0 ? entry.imgHeight : 526f;
-                    frameRt.sizeDelta = new Vector2(imgW, imgH);
-                }
+                //if (frameRt != null)
+                //{
+                //    frameRt.sizeDelta = new Vector2(finalImgWidth, finalImgHeight);
+                //}
             }
             string userId = PlayerPrefs.GetString("userId", "guest");
             FirebaseScenarioService.Instance.FetchUserProgress(userId, entry.id,
@@ -72,6 +90,7 @@ namespace RedCross.Playbook.UI
                     if (completedBadge != null)
                         completedBadge.SetActive(progress != null && progress.completed);
                 });
+
         }
 
         private void OnEnterClicked()

@@ -182,7 +182,6 @@ namespace RedCross.Playbook.Firebase
         private void FetchAllFromFirebase(Action<List<PlaybookScenario>> onComplete,
                                           Action<string> onError)
         {
-            // FIXED: same double-fire bug — local fallback was unconditional.
             _dbRef.Child(dbRootNode).Child("scenarios")
                   .GetValueAsync()
                   .ContinueWithOnMainThread(task =>

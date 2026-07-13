@@ -29,14 +29,8 @@ public class User
     public long lastLoginAt;
     public bool hasCompletedPreSurvey;
     public bool hasCompletedPostSurvey;
+    public string selectedTrack; // "Employee" or "Manager"
 
-    // ── In-memory completion history (NOT written to Firebase as part of this doc) ──
-    /// <summary>
-    /// Populated from Firebase after login if local query is needed.
-    /// [NonSerialized] — Firebase stores these as push()-keyed child nodes, not
-    /// as part of the flat user document. WriteUserJson() will never overwrite them.
-    /// To add a record, call FirebaseManager.RecordSimulationCompletion().
-    /// </summary>
     [NonSerialized]
     public Dictionary<string, CompletedModule> completedSimulations = new();
 

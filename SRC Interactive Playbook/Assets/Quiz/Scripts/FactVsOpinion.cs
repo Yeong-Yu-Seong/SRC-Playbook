@@ -23,12 +23,6 @@ public class FactVsOpinion : MonoBehaviour
     public Button[] optionButtons;     // [0]=Fact, [1]=Opinion
     public GameObject gamePanel;
 
-    // ── Inspector: Complete Panel ──────────────────────────────
-    [Header("Quiz Complete Panel")]
-    [SerializeField] private GameObject quizCompletePanel;
-    [SerializeField] private TextMeshProUGUI completeScoreText;
-    [SerializeField] private TextMeshProUGUI completePointsText;
-
     // ── Inspector: Mascot sprites ──────────────────────────────
     [Header("Mascot Assets")]
     [SerializeField] private Sprite[] mascotSprites;  // [0]=neutral, [1]=feedback
@@ -48,7 +42,6 @@ public class FactVsOpinion : MonoBehaviour
 
     private void Awake()
     {
-        if (quizCompletePanel != null) quizCompletePanel.SetActive(false);
         if (gamePanel != null) gamePanel.SetActive(false);
     }
 
@@ -84,7 +77,6 @@ public class FactVsOpinion : MonoBehaviour
         _pointsEarned = 0;
         _capturedAnswers.Clear();
 
-        if (quizCompletePanel != null) quizCompletePanel.SetActive(false);
         if (gamePanel != null) gamePanel.SetActive(true);
 
         _isGameActive = true;
