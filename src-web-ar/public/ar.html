@@ -1,72 +1,95 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Singapore Red Cross AR Cheatsheet</title>
-  <link rel="stylesheet" href="./css/ar.css" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Singapore Red Cross AR Cheatsheet</title>
+    <link rel="stylesheet" href="./css/ar.css" />
 
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
-</head>
-<body>
-  <div id="loading" class="overlay">
-    <div class="panel">
-      <h1>AR Cheatsheet</h1>
-      <p id="statusText">Loading...</p>
-      <button id="startButton" hidden>Start Camera</button>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
+  </head>
+  <body>
+    <div id="loading" class="overlay">
+      <div class="panel">
+        <h1>AR Cheatsheet</h1>
+        <p id="statusText">Loading Cheatsheet...</p>
+        <button id="startButton" hidden>Start Camera</button>
+      </div>
     </div>
-  </div>
 
-  <div id="topicBadge" class="topic-badge" hidden></div>
+    <div id="topicBadge" class="topic-badge" hidden></div>
 
-  <a-scene
-    embedded
-    vr-mode-ui="enabled: false"
-    renderer="antialias: true; alpha: true"
-    arjs="sourceType: webcam; debugUIEnabled: false;">
+    <a href="YOUR_PLAYBOOK_LINK_HERE" class="playbook-btn">
+      <img src="./assets/clipboard-icon.png" alt="View Playbook" />
+    </a>
 
-    <a-marker id="marker" type="pattern" url="./assets/marker.patt">
-      <a-entity
-        id="otter"
-        gltf-model="./assets/otter.glb"
-        position="0 0 0"
-        rotation="0 0 0"
-        scale="0.45 0.45 0.45">
+    <a-scene
+      <a-scene
+      embedded
+      vr-mode-ui="enabled: false"
+      renderer="antialias: true; alpha: true; logarithmicDepthBuffer: true;"
+      arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth:1280; sourceHeight:960; displayWidth: 1280; displayHeight: 960;">
+
+      <a-assets>
+        <a-asset-item id="otter-model" src="./assets/otter.glb"></a-asset-item>
+        <img id="bubble-img" src="./assets/yellow-bubble.png">
+      </a-assets>
+
+      <a-marker 
+        id="marker" 
+        type="pattern" 
+        url="./assets/marker.patt"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5">
+        
+        <a-entity
+          id="otter"
+          gltf-model="#otter-model"
+          position="-0.5 0 1.5"
+          rotation="-90 0 0"
+          scale="0.3 0.25 0.3"
+          class="clickable">
+        </a-entity>
+
+        <a-image
+          id="bubbleBack"
+          src="#bubble-img"
+          position="-0.5 0 -0.5"
+          rotation="-90 0 0"
+          width="3.5"
+          height="0.6"
+          class="clickable">
+          
+          <a-text
+            id="bubbleTitle"
+            position="-0.9 0.1 0.05" 
+            z-offset="0.1"
+            width="2"
+            color="#102030"
+            value="">
+          </a-text>
+
+          <a-text
+            id="bubblePoints"
+            position="-0.9 0 0.05"
+            z-offset="0.1"
+            width="2"
+            color="#102030"
+            baseline="top"
+            wrap-count="40"
+            value="">
+          </a-text>
+        </a-image>
+      </a-marker>
+
+      <a-entity camera>
+        <a-entity cursor="rayOrigin: mouse;" raycaster="objects: .clickable"></a-entity>
       </a-entity>
+    </a-scene>
 
-      <a-plane
-        id="bubbleBack"
-        position="0 1.15 0"
-        rotation="-90 0 0"
-        width="2.3"
-        height="1.2"
-        color="#ffffff"
-        opacity="0.95">
-      </a-plane>
-
-      <a-text
-        id="bubbleTitle"
-        position="-1.02 1.14 -0.04"
-        rotation="-90 0 0"
-        width="2"
-        color="#102030"
-        value="">
-      </a-text>
-
-      <a-text
-        id="bubblePoints"
-        position="-1.02 1.02 -0.04"
-        rotation="-90 0 0"
-        width="2"
-        color="#102030"
-        value="">
-      </a-text>
-    </a-marker>
-
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <script type="module" src="./js/ar-cheatsheet.js"></script>
-</body>
+    <script type="module" src="./js/ar-cheatsheet.js?v=7"></script>
+  </body>
 </html>
