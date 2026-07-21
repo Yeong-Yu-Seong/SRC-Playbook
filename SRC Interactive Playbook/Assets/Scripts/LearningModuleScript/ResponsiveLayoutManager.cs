@@ -9,12 +9,14 @@
 
 using UnityEngine;
 using UnityEngine.UI;
+using System;
 
 namespace RedCross.Playbook.UI
 {
     [RequireComponent(typeof(CanvasScaler))]
     public class ResponsiveLayoutManager : MonoBehaviour
     {
+        public static ResponsiveLayoutManager Instance { get; private set; }
         // ── Inspector ──────────────────────────────────────────────
         [Header("Layout Roots")]
         [SerializeField] private GameObject mobileLayout;   // Portrait UI hierarchy
@@ -25,11 +27,12 @@ namespace RedCross.Playbook.UI
         [SerializeField] private float mobileBreakpoint = 0.75f; // ~3:4
 
         [Header("Canvas Scaler")]
-        [SerializeField] private Vector2 mobileReferenceResolution = new(390, 844);
+        [SerializeField] private Vector2 mobileReferenceResolution = new(1206, 2622);
         [SerializeField] private Vector2 desktopReferenceResolution = new(1920, 1080);
 
         private CanvasScaler _scaler;
         private bool _lastWasMobile;
+        public bool IsMobileActive { get; private set; }
 
         // ══════════════════════════════════════════════════════════
         // Lifecycle
@@ -37,7 +40,26 @@ namespace RedCross.Playbook.UI
 
         private void Awake()
         {
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             _scaler = GetComponent<CanvasScaler>();
+        }
+
+        private void OnDestroy()
+        {
+            // Clear the singleton reference when the scene unloads so the next scene can create a new one
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         private void Start() => ApplyLayout(force: true);
@@ -54,6 +76,7 @@ namespace RedCross.Playbook.UI
 
             if (!force && isMobile == _lastWasMobile) return;
             _lastWasMobile = isMobile;
+            IsMobileActive = isMobile;
 
             if (mobileLayout != null) mobileLayout.SetActive(isMobile);
             if (desktopLayout != null) desktopLayout.SetActive(!isMobile);

@@ -14,6 +14,7 @@ public class ScenarioCompleteUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI quizStatsText;
     [SerializeField] private TextMeshProUGUI totalPointsText;
     [SerializeField] private GameObject perfectScoreBadge;
+    [SerializeField] private GameObject newHighScoreBadge;
     [SerializeField] private Button homeButton;
     [SerializeField] private Button replayButton;
 
@@ -38,7 +39,7 @@ public class ScenarioCompleteUI : MonoBehaviour
 
     }
 
-    public void Show(UserScenarioProgress scenarioProgress, PlaybookScenario scenario, int quizCorrect, int quizTotal, int quizPoints,
+    public void Show(UserScenarioProgress scenarioProgress, PlaybookScenario scenario, int quizCorrect, int quizTotal, int quizPoints, bool isNewHighScore,
                      Action onHomeClicked, Action onReplayClicked)
     {
         _onHome = onHomeClicked;
@@ -68,6 +69,7 @@ public class ScenarioCompleteUI : MonoBehaviour
         bool perfectScenario = scenarioProgress.totalQuestions > 0 && scenarioProgress.correctAnswers == scenarioProgress.totalQuestions;
         bool perfectQuiz = quizTotal == 0 || (quizTotal > 0 && quizCorrect == quizTotal);
         if (perfectScoreBadge != null) perfectScoreBadge.SetActive(perfectScenario && perfectQuiz);
+        if (newHighScoreBadge != null) newHighScoreBadge.SetActive(isNewHighScore);
 
         panel.SetActive(true);
     }

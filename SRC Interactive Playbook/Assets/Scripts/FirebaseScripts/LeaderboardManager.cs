@@ -3,16 +3,21 @@
  *              scrollable leaderboard sorted by total score.
  */
 
-using System.Collections.Generic;
 using RedCross.Playbook.Data;
+using RedCross.Playbook.UI;
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using static UnityEngine.AudioSettings;
 
 public class LeaderboardManager : MonoBehaviour
 {
     [Header("Prefab & Container")]
-    public GameObject leaderboardEntryPrefab;
-    public Transform leaderboardContainer;
+    public GameObject mobileLBEntryPrefab;
+    public GameObject desktopLBEntryPrefab;
+    public Transform mobileLBContainer;
+    public Transform desktopLBContainer;
 
     [Header("Settings")]
     public int displayCount = 10;
@@ -27,7 +32,7 @@ public class LeaderboardManager : MonoBehaviour
 
     public void OpenLeaderboard()
     {
-        if (leaderboardContainer == null) FindContainerAutomatically();
+        if (mobileLBContainer || desktopLBContainer == null) FindContainerAutomatically();
         UIManager.Instance.ShowLeaderboard();
         RefreshLeaderboard();
     }
@@ -46,20 +51,23 @@ public class LeaderboardManager : MonoBehaviour
 
     private void OnLeaderboardFetched(List<User> ranked)
     {
+        // 1. Check layout state
+        bool isMobile = ResponsiveLayoutManager.Instance.IsMobileActive;
+
+        // 2. Pick the correct container and prefab
+        Transform activeContainer = isMobile ? mobileLBContainer : desktopLBContainer;
+        GameObject activePrefab = isMobile ? mobileLBEntryPrefab : desktopLBEntryPrefab;
+
+        // Clear out old entries in BOTH containers just to be safe
+        foreach (Transform child in mobileLBContainer) Destroy(child.gameObject);
+        foreach (Transform child in desktopLBContainer) Destroy(child.gameObject);
+
+
         if (ranked == null || ranked.Count == 0)
         {
             SetStatus("No scores yet. Complete a module to appear here!");
             return;
         }
-
-        if (leaderboardContainer == null || leaderboardEntryPrefab == null)
-        {
-            Debug.LogError("[LeaderboardManager] Container or prefab not assigned.");
-            return;
-        }
-
-        foreach (Transform child in leaderboardContainer)
-            Destroy(child.gameObject);
 
         string currentUsername = UserManager.Instance?.CurrentUser?.username ?? string.Empty;
 
@@ -69,7 +77,7 @@ public class LeaderboardManager : MonoBehaviour
             bool isSelf = !string.IsNullOrEmpty(currentUsername) &&
                            user.username == currentUsername;
 
-            var row = Instantiate(leaderboardEntryPrefab, leaderboardContainer, false);
+            var row = Instantiate(activePrefab, activeContainer, false);
             var entry = row.GetComponent<LeaderboardEntry>();
 
             if (entry != null)
@@ -96,8 +104,10 @@ public class LeaderboardManager : MonoBehaviour
         {
             foreach (Transform t in GetComponentsInChildren<Transform>(true))
             {
+                bool isMobile = ResponsiveLayoutManager.Instance.IsMobileActive;
+                Transform activeContainer = isMobile ? mobileLBContainer : desktopLBContainer;
                 if (t.name != name) continue;
-                leaderboardContainer = t;
+                activeContainer = t;
                 Debug.Log($"[LeaderboardManager] Auto-found: {t.name}");
                 return;
             }

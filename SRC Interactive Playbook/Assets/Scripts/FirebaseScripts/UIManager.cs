@@ -3,6 +3,7 @@
  *              Login, Sign-Up, Homepage, and Leaderboard panels.
  */
 
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -16,6 +17,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private string _landingName = "LandingPagePanel";
     [SerializeField] private string _loginName = "LoginPanel";
     [SerializeField] private string _signupName = "SignUpPanel";
+    [SerializeField] private string _trackSelectionName = "TrackSelectionPanel";
     [SerializeField] private string _homepageName = "HomepagePanel";
     [SerializeField] private string _leaderboardName = "LeaderboardPanel";
     [SerializeField] private string _cheatsheetName = "CheatsheetPanel";
@@ -25,15 +27,16 @@ public class UIManager : MonoBehaviour
     [SerializeField] private string _homeSceneName = "HomeScene";
 
     // ── Live references (re-resolved on every HomeScene load) ──
-    private GameObject _landingPanel;
-    private GameObject _loginPanel;
-    private GameObject _signupPanel;
-    private GameObject _homepagePanel;
-    private GameObject _leaderboardPanel;
-    private GameObject _cheatsheetPanel;
-    private GameObject _profilePanel;
-    private GameObject _presurveyPanel;
-    private GameObject _postsurveyPanel;
+    private List<GameObject> _landingPanels = new List<GameObject>();
+    private List<GameObject> _signupPanels = new List<GameObject>(); 
+    private List<GameObject> _loginPanels = new List<GameObject>(); 
+    private List<GameObject> _trackSelectionPanels = new List<GameObject>();
+    private List<GameObject> _homepagePanels = new List<GameObject>(); 
+    private List<GameObject> _leaderboardPanels = new List<GameObject>();
+    private List<GameObject> _cheatsheetPanels = new List<GameObject>();
+    private List<GameObject> _profilePanels = new List<GameObject>();
+    private List<GameObject> _presurveyPanels = new List<GameObject>();
+    private List<GameObject> _postsurveyPanels = new List<GameObject>();
 
     // ══════════════════════════════════════════════════════════
     // Lifecycle
@@ -84,45 +87,60 @@ public class UIManager : MonoBehaviour
     public void ShowLanding()
     {
         SetAll(false);
-        Set(_landingPanel, true);
-        GetNavBar()?.HideNavBar();
+        SetList(_landingPanels, true);
+        foreach (var nav in GetAllNavBars()) nav.HideNavBar();
     }
 
     public void ShowLogin()
     {
         SetAll(false);
-        Set(_loginPanel, true);
-        GetNavBar()?.HideNavBar();
+        SetList(_loginPanels, true);
+        foreach (var nav in GetAllNavBars()) nav.HideNavBar();
     }
 
     public void ShowSignup()
     {
         SetAll(false);
-        Set(_signupPanel, true);
-        GetNavBar()?.HideNavBar();
+        SetList(_signupPanels, true);
+        foreach (var nav in GetAllNavBars()) nav.HideNavBar();
     }
 
     public void ShowHomepage()
     {
         SetAll(false);
-        Set(_homepagePanel, true);
-
-        // Check if pre-survey is done
-        if (UserManager.Instance?.CurrentUser != null && !UserManager.Instance.CurrentUser.hasCompletedPreSurvey)
+        var user = UserManager.Instance?.CurrentUser;
+        if (user != null)
         {
-            ShowPreSurvey();
-            return;
+            // 1. Check if track is selected
+            if (string.IsNullOrEmpty(user.selectedTrack))
+            {
+                ShowTrackSelection();
+                return;
+            }
+
+            // 2. Check if pre-survey is done
+            if (!user.hasCompletedPreSurvey)
+            {
+                ShowPreSurvey();
+                return;
+            }
         }
 
-        Set(_homepagePanel, true);
-        GetNavBar()?.ShowNavBar();
+        SetList(_homepagePanels, true);
+        foreach (var nav in GetAllNavBars()) nav.ShowNavBar();
     }
 
+    public void ShowTrackSelection()
+    {
+        SetAll(false);
+        SetList(_trackSelectionPanels, true);
+        foreach (var nav in GetAllNavBars()) nav.ShowNavBar();
+    }
     public void ShowPreSurvey()
     {
         SetAll(false);
-        Set(_presurveyPanel, true);
-        GetNavBar()?.HideNavBar();
+        SetList(_presurveyPanels, true);
+        foreach (var nav in GetAllNavBars()) nav.ShowNavBar();
     }
 
     public void ShowLeaderboard()
@@ -131,7 +149,7 @@ public class UIManager : MonoBehaviour
         // Calling this directly just ensures the homepage canvas is
         // visible and lets NavBar handle the panel.
         ShowHomepage();
-        GetNavBar()?.ResetToModulesTab();
+        foreach (var nav in GetAllNavBars()) nav.ResetToModulesTab();
     }
 
     // ══════════════════════════════════════════════════════════
@@ -140,48 +158,49 @@ public class UIManager : MonoBehaviour
 
     private void ResolveReferences()
     {
-        // All panels live inside SignInCanvas in your hierarchy,
-        // so we search its children
-        _landingPanel = FindInScene(_landingName);
-        _loginPanel = FindInScene(_loginName);
-        _signupPanel = FindInScene(_signupName);
-        _homepagePanel = FindInScene(_homepageName);
-        _leaderboardPanel = FindInScene(_leaderboardName);
-        _cheatsheetPanel = FindInScene(_cheatsheetName);
-        _profilePanel = FindInScene(_profileName);
-        _presurveyPanel = FindInScene(_presurveyName);
-        _postsurveyPanel = FindInScene(_postsurveyName);
+        _landingPanels.Clear();
+        _loginPanels.Clear();
+        _signupPanels.Clear();
+        _trackSelectionPanels.Clear();
+        _homepagePanels.Clear();
+        _leaderboardPanels.Clear();
+        _cheatsheetPanels.Clear();
+        _profilePanels.Clear();
+        _presurveyPanels.Clear();
+        _postsurveyPanels.Clear();
+
+        FindAllInScene(_landingName, _landingPanels);
+        FindAllInScene(_loginName, _loginPanels);
+        FindAllInScene(_signupName, _signupPanels);
+        FindAllInScene(_trackSelectionName, _trackSelectionPanels);
+        FindAllInScene(_homepageName, _homepagePanels);
+        FindAllInScene(_leaderboardName, _leaderboardPanels);
+        FindAllInScene(_cheatsheetName, _cheatsheetPanels);
+        FindAllInScene(_profileName, _profilePanels);
+        FindAllInScene(_presurveyName, _presurveyPanels);
+        FindAllInScene(_postsurveyName, _postsurveyPanels);
     }
 
-    private GameObject FindInScene(string goName)
+    private void FindAllInScene(string goName, List<GameObject> results)
     {
         Scene home = SceneManager.GetSceneByName(_homeSceneName);
         if (home.IsValid() && home.isLoaded)
         {
             foreach (GameObject root in home.GetRootGameObjects())
             {
-                if (root.name == goName) return root;
-                Transform found = FindDeep(root.transform, goName);
-                if (found != null) return found.gameObject;
+                if (root.name == goName) results.Add(root);
+                FindAllDeep(root.transform, goName, results);
             }
         }
-        // Fallback for first load before scene is fully registered
-        GameObject direct = GameObject.Find(goName);
-        if (direct == null)
-            Debug.LogWarning($"[UIManager] Could not find '{goName}' in scene. " +
-                             $"Check the name matches your Hierarchy exactly.");
-        return direct;
     }
 
-    private Transform FindDeep(Transform parent, string name)
+    private void FindAllDeep(Transform parent, string name, List<GameObject> results)
     {
         foreach (Transform child in parent)
         {
-            if (child.name == name) return child;
-            Transform found = FindDeep(child, name);
-            if (found != null) return found;
+            if (child.name == name) results.Add(child.gameObject);
+            FindAllDeep(child, name, results);
         }
-        return null;
     }
 
     // ══════════════════════════════════════════════════════════
@@ -190,28 +209,29 @@ public class UIManager : MonoBehaviour
 
     private void SetAll(bool active)
     {
-        Set(_landingPanel, active);
-        Set(_loginPanel, active);
-        Set(_signupPanel, active);
-        Set(_homepagePanel, active);
-        Set(_leaderboardPanel, active);
-        Set(_cheatsheetPanel, active);
-        Set(_profilePanel, active);
-        Set(_presurveyPanel, active);
-        Set(_postsurveyPanel, active);
+        SetList(_landingPanels, active);
+        SetList(_loginPanels, active);
+        SetList(_signupPanels, active);
+        SetList(_trackSelectionPanels, active);
+        SetList(_homepagePanels, active);
+        SetList(_leaderboardPanels, active);
+        SetList(_cheatsheetPanels, active);
+        SetList(_profilePanels, active);
+        SetList(_presurveyPanels, active);
+        SetList(_postsurveyPanels, active);
     }
 
-    private void Set(GameObject panel, bool active)
+    private void SetList(List<GameObject> panels, bool active)
     {
-        if (panel != null) panel.SetActive(active);
+        foreach (var panel in panels)
+        {
+            if (panel != null) panel.SetActive(active);
+        }
     }
 
-    public NavBarController GetNavBar()
+    public NavBarController[] GetAllNavBars()
     {
-        // NavBarController is scene-local so FindObjectOfType works here
-        NavBarController nav = FindFirstObjectByType<NavBarController>(FindObjectsInactive.Include);
-        if (nav == null)
-            Debug.LogWarning("[UIManager] NavBarController not found in scene.");
-        return nav;
+        // Finds both the Mobile and Desktop NavBars
+        return FindObjectsByType<NavBarController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
     }
 }

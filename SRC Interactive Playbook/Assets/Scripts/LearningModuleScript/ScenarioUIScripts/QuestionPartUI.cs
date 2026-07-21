@@ -1,10 +1,11 @@
+using RedCross.Playbook.Data;
+using RedCross.Playbook.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using RedCross.Playbook.Data;
 
 public class QuestionPartUI : MonoBehaviour
 {
@@ -16,7 +17,8 @@ public class QuestionPartUI : MonoBehaviour
     [SerializeField] private Transform choicesContainer;
 
     [Header("Prefab")]
-    [SerializeField] private GameObject choiceButtonPrefab;
+    [SerializeField] private GameObject mobileCBPrefab;
+    [SerializeField] private GameObject desktopCBPrefab;
 
     private Action<Choice> _onChoiceSelected;
     private readonly List<GameObject> _spawnedButtons = new();
@@ -34,9 +36,12 @@ public class QuestionPartUI : MonoBehaviour
         foreach (var b in _spawnedButtons) Destroy(b);
         _spawnedButtons.Clear();
 
+        bool isMobile = ResponsiveLayoutManager.Instance.IsMobileActive;
+        GameObject prefabToUse = isMobile ? mobileCBPrefab : desktopCBPrefab;
         foreach (var choice in part.choices)
         {
-            var go = Instantiate(choiceButtonPrefab, choicesContainer);
+            // 3. Instantiate the correct prefab
+            var go = Instantiate(prefabToUse, choicesContainer);
             var btn = go.GetComponent<ChoiceButtonUI>();
             btn.Initialise(choice, OnChoiceButtonClicked);
             _spawnedButtons.Add(go);
