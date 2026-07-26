@@ -31,16 +31,14 @@ namespace RedCross.Playbook.Data
         public string category; // e.g., "Main", "BiteSized"
         public string track;
 
-        /// <summary>
-        /// Documents the scoring formula in the DB so it is explicit for admins.
-        /// Value: "base + (correctAnswers * pointsPerCorrect)"
-        /// </summary>
+        // Documents the scoring formula in the DB so it is explicit for admins.
+        // Value: "base + (correctAnswers * pointsPerCorrect)"
         public string scoringFormula;
         public string createdBy;
         public long createdAt;
         public string lastUpdatedBy;
 
-        /// <summary>Set via ServerValue.TIMESTAMP on every admin write. Never 0.</summary>
+        /// Set via ServerValue.TIMESTAMP on every admin write. Never 0.
         public long lastUpdatedTimestamp;
 
         public List<ScenePart> sceneParts = new();
@@ -59,16 +57,18 @@ namespace RedCross.Playbook.Data
         public string narrativeText;
         public string backgroundImageUrl;
         public string audioUrl;
+        public string videoUrl;
         public float displayDurationSecs;
 
         // Question
         public string questionText;
         public string contextHintText;
         public List<Choice> choices = new();
+        public string linkedActivityId;
     }
 
     [Serializable]
-    public enum ScenePartType { Narrative, Question }
+    public enum ScenePartType { Narrative, Question, Activity }
 
     /// <summary>One answer option inside a Question part.</summary>
     [Serializable]
@@ -121,6 +121,8 @@ namespace RedCross.Playbook.Data
         public float wallX = 0f;
         /// <summary>Vertical anchored position on the gallery wall canvas.</summary>
         public float wallY = 0f;
+        public float desktopWallX = 0f;
+        public float desktopWallY = 0f;
         /// <summary>Width of the exhibit frame RectTransform in Unity UI units.</summary>
         public float cardWidth = 300f;
         /// <summary>Height of the exhibit frame RectTransform.</summary>
@@ -142,12 +144,6 @@ namespace RedCross.Playbook.Data
     [Serializable]
     public class UserScenarioProgress
     {
-        /// <summary>
-        /// DEPRECATED — kept as a read-only field so existing DB records deserialise
-        /// without throwing. New writes in ScenarioManager pass scenarioId as the
-        /// node key parameter instead of embedding it in the document.
-        /// Do not write to this field in new code.
-        /// </summary>
         [Obsolete("Use the Firebase node key, not this field. Kept for backwards-compat reads only.")]
         public string scenarioId;
 
@@ -169,16 +165,16 @@ namespace RedCross.Playbook.Data
     {
         public string id;
         public string title;
-
         /// <summary>"FactsVsOpinions", "MCQ", or "DragAndDrop".</summary>
         public string type;
-
         /// <summary>Links this quiz to its parent scenario exhibit.</summary>
         public string linkedScenarioId;
-
         public int pointsOnCompletion;
         public bool isPublished;
         public int sortOrder;
+        public string instructionText;
+        public string correctFeedbackText;
+        public string incorrectFeedbackText;
 
         public List<QuizQuestion> questions = new();
     }

@@ -4,8 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using System.Collections;           // ← needed for IEnumerator (Option B)
-// using DG.Tweening;               // ← uncomment this instead if DOTween is installed
+using System.Collections;          
 
 namespace RedCross.Playbook.UI
 {
@@ -48,41 +47,42 @@ namespace RedCross.Playbook.UI
                 var tex = Resources.Load<Texture2D>(entry.thumbnailUrl);
                 if (tex != null) thumbnail.texture = tex;
             }
-            // 1. Grab the base sizes from Firebase (or use defaults)
+
+            // 1. Grab the base sizes from Firebase (or use safe fallbacks)
             float finalWidth = entry.cardWidth > 0 ? entry.cardWidth : 300f;
-            float finalHeight = entry.cardHeight > 0 ? entry.cardHeight : 240f;
+            float finalHeight = entry.cardHeight > 0 ? entry.cardHeight : 450f;
+            float finalImgWidth = entry.imgWidth > 0 ? entry.imgWidth : 280f;
+            float finalImgHeight = entry.imgHeight > 0 ? entry.imgHeight : 200f;
 
-            float finalImgWidth = entry.imgWidth > 0 ? entry.imgWidth : 700f;
-            float finalImgHeight = entry.imgHeight > 0 ? entry.imgHeight : 526f;
-
-            // 2. If we are on Desktop, scale the sizes up using the same math!
+            // 2. If we are on Desktop, scale the sizes up using the responsive layout multiplier
             if (!ResponsiveLayoutManager.Instance.IsMobileActive)
             {
                 float scaleX = 1206f / 1920f;
-                //float scaleY = 2622f / 1080f; 
 
                 finalWidth *= scaleX;
                 finalHeight *= scaleX;
-
                 finalImgWidth *= scaleX;
                 finalImgHeight *= scaleX;
             }
 
-            // 3. Apply the final scaled sizes to the RectTransforms
+            // 3. Apply the final scaled sizes to the main Card RectTransform
             RectTransform rect = GetComponent<RectTransform>();
             if (rect != null)
             {
                 rect.sizeDelta = new Vector2(finalWidth, finalHeight);
             }
 
+            // 4. Apply the final scaled sizes to the inner Artwork Frame RectTransform
             if (frameButton != null)
             {
                 RectTransform frameRt = frameButton.GetComponent<RectTransform>();
-                //if (frameRt != null)
-                //{
-                //    frameRt.sizeDelta = new Vector2(finalImgWidth, finalImgHeight);
-                //}
+                if (frameRt != null)
+                {
+                    frameRt.sizeDelta = new Vector2(finalImgWidth, finalImgHeight);
+                }
             }
+
+            // 5. Fetch User Progress for Completion Badge
             string userId = PlayerPrefs.GetString("userId", "guest");
             FirebaseScenarioService.Instance.FetchUserProgress(userId, entry.id,
                 progress =>
@@ -90,7 +90,6 @@ namespace RedCross.Playbook.UI
                     if (completedBadge != null)
                         completedBadge.SetActive(progress != null && progress.completed);
                 });
-
         }
 
         private void OnEnterClicked()
@@ -110,16 +109,11 @@ namespace RedCross.Playbook.UI
 
         private void OnFrameTapped()
         {
-            // Option B — coroutine punch scale (no DOTween needed)
             StartCoroutine(PunchScale());
-
-            // Option A — uncomment below and delete the line above if DOTween is installed
-            // transform.DOPunchScale(Vector3.one * 0.04f, 0.25f, 1, 0.5f);
-
             InfoOverlayUI.Instance.Show(_entry, OnEnterClicked);
         }
 
-        // ── Coroutine: quick scale punch (replaces DOPunchScale) ──
+        // ── Coroutine: quick scale punch ──
         private IEnumerator PunchScale()
         {
             Vector3 original = transform.localScale;

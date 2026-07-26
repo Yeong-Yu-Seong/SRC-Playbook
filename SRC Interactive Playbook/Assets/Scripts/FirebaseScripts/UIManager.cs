@@ -124,6 +124,18 @@ public class UIManager : MonoBehaviour
                 ShowPreSurvey();
                 return;
             }
+
+            // 3. Check if the user just finished all main scenarios
+            // and hasn't already completed the post-survey in the database.
+            if (PlayerPrefs.GetInt("ShowPostSurvey", 0) == 1 && !user.hasCompletedPostSurvey)
+            {
+                // Clear the flag so it doesn't get stuck in a loop later
+                PlayerPrefs.SetInt("ShowPostSurvey", 0);
+                PlayerPrefs.Save();
+
+                ShowPostSurvey();
+                return;
+            }
         }
 
         SetList(_homepagePanels, true);
@@ -134,13 +146,19 @@ public class UIManager : MonoBehaviour
     {
         SetAll(false);
         SetList(_trackSelectionPanels, true);
-        foreach (var nav in GetAllNavBars()) nav.ShowNavBar();
+        foreach (var nav in GetAllNavBars()) nav.HideNavBar();
     }
     public void ShowPreSurvey()
     {
         SetAll(false);
         SetList(_presurveyPanels, true);
-        foreach (var nav in GetAllNavBars()) nav.ShowNavBar();
+        foreach (var nav in GetAllNavBars()) nav.HideNavBar();
+    }
+    public void ShowPostSurvey()
+    {
+        SetAll(false);
+        SetList(_postsurveyPanels, true);
+        foreach (var nav in GetAllNavBars()) nav.HideNavBar();
     }
 
     public void ShowLeaderboard()

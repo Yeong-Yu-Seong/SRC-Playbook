@@ -8,12 +8,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Firebase;
-using Firebase.Database;
-using Firebase.Auth;
-using Firebase.Extensions;
 using System.Collections.Generic;
 using RedCross.Playbook.Data;
+using FirebaseWebGL.Scripts.FirebaseBridge;
 
 public class ProfileManager : MonoBehaviour
 {
@@ -32,11 +29,10 @@ public class ProfileManager : MonoBehaviour
 
     [Header("Change Tracking")]
     private bool hasChanges = false;
-    private string currentUser;
+    //private string currentUser;
     [SerializeField] private TextMeshProUGUI errorText; // TextMeshProUGUI component to display error messages
 
     public static ProfileManager profileManagerInstance; // Singleton instance of ProfileManager
-    private DatabaseReference db;
 
     private void Awake()
     {
@@ -49,19 +45,11 @@ public class ProfileManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-        this.gameObject.SetActive(false); // Disable the script at the start of the game to prevent it from running until needed
     }
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        db = FirebaseDatabase.DefaultInstance.RootReference;
         errorText.text = ""; // Clear any existing error messages at the start
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 
     /// <summary>
@@ -69,26 +57,20 @@ public class ProfileManager : MonoBehaviour
     /// </summary>
     public void ShowProfile()
     {
-        // Retrieve user data from Firebase Realtime Database and populate the profile UI elements
-        FirebaseDatabase.DefaultInstance
-        .GetReference("users").Child(FirebaseManager.Instance.CurrentUserId)
-        .GetValueAsync().ContinueWithOnMainThread(task => {
-        if (task.IsFaulted) {
-            Debug.LogError("Error retrieving user data: " + task.Exception);
+        if (profilePanel != null) profilePanel.SetActive(true);
+   
+        // Simply fetch the data from our active session in UserManager
+        User currentUser = UserManager.Instance.CurrentUser;
+
+        if (currentUser != null)
+        {
+            profileTexts[0].text = currentUser.username;
+            profileTexts[1].text = currentUser.email;
         }
-        else if (task.IsCompleted) {
-            DataSnapshot snapshot = task.Result;
-            if (snapshot.Exists)
-            {
-                profileTexts[0].text = snapshot.Child("username").Value.ToString();
-                profileTexts[1].text = snapshot.Child("email").Value.ToString();
-            }
-            else
-            {
-                Debug.LogWarning("No user data found.");
-            }
+        else
+        {
+            Debug.LogWarning("Cannot display profile: CurrentUser in UserManager is null.");
         }
-        });
     }
 
     /// <summary>
@@ -133,42 +115,24 @@ public class ProfileManager : MonoBehaviour
     /// </summary>
     public void SaveChanges()
     {
-        // Validate the input fields before saving changes
-        errorText.text = ""; // Clear any existing error messages
-        for (int i = 0; i < profileInputFields.Length; i++)
-        {
-            if (profileInputFields[i].text != profileTexts[i].text)
-            {
-                // If email input is added back, uncomment the following validation for email format
-                /*if (i == 1) // If the email field has changed, validate the new email format
-                {
-                    string email = profileInputFields[i].text;
-                    if (!email.Contains("@") || !email.Contains("."))
-                    {
-                        errorText.text = "Invalid email format.";
-                        return; // Exit the method if the email format is invalid
-                    }
-                }*/
-                if (i == 0) // If the username field has changed, validate the new username format
-                {
-                    string username = profileInputFields[i].text;
-                    if (username.Length < 3 || username.Length > 20)
-                    {
-                        errorText.text = "Username must be between 3 and 20 characters.";
-                        return; // Exit the method if the username format is invalid
-                    }
-                }
-            }
-        }
-        hasChanges = false;
+        errorText.text = "";
+
+        // Check if the username is valid
         string newUsername = profileInputFields[0].text;
-        string newEmail = profileInputFields[1].text;
-        // Update the profile data in Firebase Realtime Database
+        if (newUsername.Length < 3 || newUsername.Length > 20)
+        {
+            errorText.text = "Username must be between 3 and 20 characters.";
+            return;
+        }
+
+        // Only update the username in Firebase
         FirebaseManager.Instance.UpdateUserField("username", newUsername,
             () => Debug.Log("Username updated"),
             error => Debug.LogError(error));
-        FirebaseManager.Instance.UpdateUserField("email", newEmail,
-            () => Debug.Log("Email updated"),
+        hasChanges = false;
+        // Update the profile data in Firebase Realtime Database
+        FirebaseManager.Instance.UpdateUserField("username", newUsername,
+            () => Debug.Log("Username updated"),
             error => Debug.LogError(error));
 
         // Close the prompt and switch back to the profile panel
@@ -179,7 +143,13 @@ public class ProfileManager : MonoBehaviour
 
         // Update the profileTexts to reflect the changes
         profileTexts[0].text = newUsername;
-        profileTexts[1].text = newEmail;
+
+        if (UserManager.Instance.CurrentUser != null)
+        {
+            UserManager.Instance.CurrentUser.username = newUsername;
+            // This method triggers RefreshHUD() automatically!
+            UserManager.Instance.SetUserData(UserManager.Instance.CurrentUser);
+        }
     }
 
     /// <summary>
@@ -188,17 +158,23 @@ public class ProfileManager : MonoBehaviour
     public void ChangePassword()
     {
         Debug.Log("Change Password button clicked.");
-        FirebaseAuth.DefaultInstance.SendPasswordResetEmailAsync(FirebaseAuth.DefaultInstance.CurrentUser.Email).ContinueWithOnMainThread(task => {
-            if (task.IsCompleted)
-            {
-                Debug.Log("Password reset email sent.");
-            }
-            else
-            {
-                Debug.LogError("Error sending password reset email: " + task.Exception);
-            }
-        });
+        string email = profileTexts[1].text;
+
+        // WebGL Bridge Call
+        FirebaseAuth.SendPasswordResetEmail(email, gameObject.name, "OnPasswordResetSuccess", "OnPasswordResetFailed");
     }
+
+    // --- WebGL Callbacks ---
+    public void OnPasswordResetSuccess(string info)
+    {
+        Debug.Log("Password reset email sent.");
+    }
+
+    public void OnPasswordResetFailed(string error)
+    {
+        Debug.LogError("Error sending password reset email: " + error);
+    }
+    // -----------------------
 
     /// <summary>
     /// Cancels any unsaved changes and switches back to the profile panel without saving.
@@ -218,6 +194,7 @@ public class ProfileManager : MonoBehaviour
     public void ClearProfile()
     {
         FirebaseManager.Instance.Logout(); // Log out the user from Firebase Authentication
+        UserManager.Instance.ClearUserData(); // Clear the current user data in UserManager
         UIManager.Instance.ShowLanding(); // Show the landing page after logout
         profileTexts[0].text = ""; // Clear the username text
         profileTexts[1].text = ""; // Clear the email text
