@@ -86,28 +86,28 @@ public class NavBarController : MonoBehaviour
 
     private void Awake()
     {
-        _isScenarioScene =
-            SceneManager.GetActiveScene().name == scenarioSceneName;
+        _isScenarioScene = SceneManager.GetActiveScene().name == scenarioSceneName;
 
         WireButtons();
 
-        // Always start hidden — ShowNavBar() is called explicitly
-        // after login/signup succeeds (via UIManager.ShowHomepage)
-        gameObject.SetActive(false);
-    }
-
-    private void Start()
-    {
-        if (_isScenarioScene)
+        if (!_isScenarioScene)
         {
-            // ScenarioScene: visibility handled in Update()
-            // No tab switching needed — tabs load HomeScene instead
-            return;
-        }
+            // FIX 1: Switch the panels immediately in Awake. 
+            // If we wait for Start(), it won't run if the object gets disabled!
+            SwitchTab(RequestedTab);
 
-        // HomeScene: restore the tab that was requested
-        // (e.g. Modules after returning from ScenarioScene)
-        SwitchTab(RequestedTab);
+            // FIX 2: Check if the user is already logged in (e.g., returning from a scenario).
+            // If they are, keep the NavBar visible. If not, hide it and wait for the login screen.
+            bool isLoggedIn = UserManager.Instance != null && 
+                              UserManager.Instance.CurrentUser != null;
+            
+            gameObject.SetActive(isLoggedIn);
+        }
+        else
+        {
+            // Scenario scene always starts hidden
+            gameObject.SetActive(false);
+        }
     }
 
     private void Update()
@@ -178,6 +178,11 @@ public class NavBarController : MonoBehaviour
 
         if (tab == Tab.Leaderboard && leaderboardManager != null)
             leaderboardManager.RefreshLeaderboard();
+
+        if (tab == Tab.Profile && ProfileManager.profileManagerInstance != null)
+        {
+            ProfileManager.profileManagerInstance.ShowProfile();
+        }
 
         Debug.Log($"[NavBarController] Switched to tab: {tab}");
     }

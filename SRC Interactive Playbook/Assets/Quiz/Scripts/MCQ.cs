@@ -1,34 +1,40 @@
 ﻿/*
     Author: Yeong Yu Seong
     Date Created: 26 May 2026
-    Last Edited: 16 June 2026
+    Last Edited: 26 July 2026 (by Kwek Sin En)
     Description: This script is used to manage the Multiple Choice Questions game.
 */
+using RedCross.Playbook.Data;
 using System;
 using System.Collections.Generic;
-using RedCross.Playbook.Data;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class MCQ : MonoBehaviour
 {
-    // ── Inspector: Game Panel ──────────────────────────────────
-    [Header("UI References")]
+    // ── Inspector: UI References ──────────────────────────────
+    [Header("Header Text (From Firebase)")]
+    public TextMeshProUGUI titleText;
+    public TextMeshProUGUI instructionText;
+
+    [Header("Question UI")]
     public TextMeshProUGUI statementText;
     public TextMeshProUGUI questionNumberText;
-    public TextMeshProUGUI answerPanelQuestionNumber;
     public Image timerCountdown;        // fill image, 0–1
     public Button[] optionButtons;
     public TextMeshProUGUI[] optionTexts;
+    public Button submitButton;         // for MultiMCQ only
 
     [Header("Panels")]
     public GameObject gamePanel;
-    public GameObject answerPanel;
 
-    [Header("Answer Panel UI")]
-    public TextMeshProUGUI answerQuestionText;
-    public TextMeshProUGUI answerText;
+    [Header("Feedback Panel")]
+    public GameObject feedbackPanel;
+    public TextMeshProUGUI feedbackTitleText;
+    public TextMeshProUGUI feedbackMessageText;
+    public Button feedbackActionButton;
 
     // ── Runtime ────────────────────────────────────────────────
     private PlaybookQuiz _quizData;
@@ -38,18 +44,18 @@ public class MCQ : MonoBehaviour
     private const float TimerDuration = 60f;
     private bool _isGameActive = false;
     private Dictionary<string, string> _capturedAnswers = new();
-    private int _pointsEarned = 0;
+    private string _quizType;
     private Action<int, int, int> _onCompleteCallback;
 
-    // ══════════════════════════════════════════════════════════
-    // Lifecycle
-    // ══════════════════════════════════════════════════════════
+    private List<string> _currentMultiSelections = new();
+
+    private ColorBlock[] _originalColorBlocks;
 
     private void Awake()
     {
-        if (gamePanel != null) gamePanel.SetActive(false);
+        if (submitButton != null) submitButton.onClick.AddListener(OnSubmitClicked);
+        if (feedbackPanel != null) feedbackPanel.SetActive(false);
     }
-
     private void Update()
     {
         if (!_isGameActive) return;
@@ -58,47 +64,39 @@ public class MCQ : MonoBehaviour
         if (_timer <= 0f) EndGame();
     }
 
-    // ══════════════════════════════════════════════════════════
-    // Entry point
-    // ══════════════════════════════════════════════════════════
-
     public void StartGame(PlaybookQuiz runtimeQuiz, Action<int, int, int> onComplete)
     {
-        if (runtimeQuiz == null || runtimeQuiz.questions == null || runtimeQuiz.questions.Count == 0)
-        {
-            Debug.LogError("[MCQ] Invalid quiz data passed to StartGame.");
-            //onComplete?.Invoke();
-            return;
-        }
+        if (runtimeQuiz == null || runtimeQuiz.questions == null || runtimeQuiz.questions.Count == 0) return;
+
         _onCompleteCallback = onComplete;
-        gameObject.SetActive(true);
         _quizData = runtimeQuiz;
         _correctCount = 0;
         _questionIndex = 0;
         _timer = TimerDuration;
-        _pointsEarned = 0;
         _capturedAnswers.Clear();
+        _quizType = runtimeQuiz.type;
 
-        if (answerPanel != null) answerPanel.SetActive(false);
+        // Map Firebase Headers
+        if (titleText != null) titleText.text = _quizData.title;
+        if (instructionText != null) instructionText.text = _quizData.instructionText;
+
+        gameObject.SetActive(true);
         if (gamePanel != null) gamePanel.SetActive(true);
+        if (feedbackPanel != null) feedbackPanel.SetActive(false);
+        if (submitButton != null) submitButton.gameObject.SetActive(_quizType == "MultiMCQ");
 
         _isGameActive = true;
         DisplayQuestion();
-
-        Debug.Log($"[MCQ] Started quiz '{runtimeQuiz.id}' with {runtimeQuiz.questions.Count} questions.");
     }
-
-    // ══════════════════════════════════════════════════════════
-    // Question display
-    // ══════════════════════════════════════════════════════════
 
     private void DisplayQuestion()
     {
-        var q = _quizData.questions[_questionIndex];
+        _currentMultiSelections.Clear();
+        if (submitButton != null) submitButton.interactable = true;
 
+        var q = _quizData.questions[_questionIndex];
         if (statementText != null) statementText.text = q.prompt;
-        if (questionNumberText != null) questionNumberText.text =
-            $"Q{_questionIndex + 1}/{_quizData.questions.Count}";
+        if (questionNumberText != null) questionNumberText.text = $"Q{_questionIndex + 1}/{_quizData.questions.Count}";
         if (timerCountdown != null) timerCountdown.fillAmount = 1f;
 
         for (int i = 0; i < optionButtons.Length; i++)
@@ -107,12 +105,20 @@ public class MCQ : MonoBehaviour
             {
                 optionButtons[i].gameObject.SetActive(true);
                 optionButtons[i].interactable = true;
-                if (optionTexts.Length > i) optionTexts[i].text = q.choices[i].text;
+                optionTexts[i].text = q.choices[i].text;
 
-                int captured = i; // capture loop variable
+                // Reset button to its beautiful original color
+                if (_originalColorBlocks != null && i < _originalColorBlocks.Length)
+                {
+                    optionButtons[i].colors = _originalColorBlocks[i];
+                }
+
                 optionButtons[i].onClick.RemoveAllListeners();
-                optionButtons[i].onClick.AddListener(
-                    () => OnOptionSelected(q.choices[captured].id));
+                string choiceId = q.choices[i].id;
+                Button btnRef = optionButtons[i];
+                int btnIndex = i; // Safely capture the index for the listener
+
+                optionButtons[i].onClick.AddListener(() => OnOptionSelected(choiceId, btnRef, btnIndex));
             }
             else
             {
@@ -121,67 +127,100 @@ public class MCQ : MonoBehaviour
         }
     }
 
-    // ══════════════════════════════════════════════════════════
-    // Answer selection
-    // ══════════════════════════════════════════════════════════
-
-    public void OnOptionSelected(string selectedChoiceId)
+    private void OnOptionSelected(string selectedChoiceId, Button clickedBtn, int btnIndex)
     {
-        _isGameActive = false;
-        foreach (Button btn in optionButtons) btn.interactable = false;
-
-        var q = _quizData.questions[_questionIndex];
-        bool isCorrect = selectedChoiceId == q.correctAnswerId;
-
-        _capturedAnswers[q.id] = selectedChoiceId;
-        if (isCorrect) _correctCount++;
-
-        ShowAnswerPanel(q, isCorrect);
-    }
-
-    private void ShowAnswerPanel(QuizQuestion question, bool isCorrect)
-    {
-        if (gamePanel != null) gamePanel.SetActive(false);
-        if (answerPanel != null) answerPanel.SetActive(true);
-
-        if (answerQuestionText != null) answerQuestionText.text = question.prompt;
-        if (answerPanelQuestionNumber != null) answerPanelQuestionNumber.text =
-            $"Q{_questionIndex + 1}/{_quizData.questions.Count}";
-
-        string correctText = question.choices.Find(c => c.id == question.correctAnswerId)?.text ?? "—";
-        string resultPrefix = isCorrect
-            ? "<color=#5EC97F>Correct!</color>"
-            : "<color=#E74142>Incorrect!</color>";
-
-        if (answerText != null)
-            answerText.text = $"{resultPrefix}\nCorrect answer: {correctText}" +
-                              (string.IsNullOrEmpty(question.feedbackText)
-                                   ? ""
-                                   : $"\n{question.feedbackText}");
-    }
-
-    // Wire this to the "Next" button on the Answer Panel in the Inspector
-    public void NextQuestion()
-    {
-        if (answerPanel != null) answerPanel.SetActive(false);
-
-        if (_questionIndex < _quizData.questions.Count - 1)
+        if (_quizType == "MultiMCQ")
         {
-            _questionIndex++;
-            _timer = TimerDuration;
-            _isGameActive = true;
-            if (gamePanel != null) gamePanel.SetActive(true);
-            DisplayQuestion();
+            ColorBlock cb = clickedBtn.colors;
+            ColorBlock originalCb = _originalColorBlocks[btnIndex];
+
+            // Toggle selection
+            if (_currentMultiSelections.Contains(selectedChoiceId))
+            {
+                _currentMultiSelections.Remove(selectedChoiceId);
+                // Restore your original bright color
+                clickedBtn.colors = originalCb;
+            }
+            else
+            {
+                _currentMultiSelections.Add(selectedChoiceId);
+
+                // Darken your original color by 50% so it looks "pressed in"
+                Color darkenedColor = originalCb.normalColor * 0.5f;
+                darkenedColor.a = 1f; // Ensure it stays fully opaque
+                cb.normalColor = darkenedColor;
+                cb.selectedColor = darkenedColor;
+
+                clickedBtn.colors = cb;
+            }
         }
         else
         {
-            EndGame();
+            // Single MCQ mode
+            _isGameActive = false;
+            foreach (var btn in optionButtons) btn.interactable = false;
+
+            var q = _quizData.questions[_questionIndex];
+            _capturedAnswers[q.id] = selectedChoiceId;
+
+            bool isCorrect = selectedChoiceId == q.correctAnswerId;
+            if (isCorrect) _correctCount++;
+
+            ShowFeedback(isCorrect, q);
         }
     }
 
-    // ══════════════════════════════════════════════════════════
-    // End game
-    // ══════════════════════════════════════════════════════════
+    private void OnSubmitClicked()
+    {
+        if (_quizType != "MultiMCQ") return;
+
+        _isGameActive = false;
+        if (submitButton != null) submitButton.interactable = false;
+        foreach (var btn in optionButtons) btn.interactable = false;
+
+        var q = _quizData.questions[_questionIndex];
+
+        // Split the correct string and sort both lists to compare them accurately 
+        // (So if they select 2 then 1, it still matches "1,2")
+        var correctList = q.correctAnswerId.Split(',').Select(s => s.Trim()).OrderBy(s => s).ToList();
+        var userList = _currentMultiSelections.OrderBy(s => s).ToList();
+
+        bool isCorrect = correctList.SequenceEqual(userList);
+        if (isCorrect) _correctCount++;
+
+        string finalAnswerStr = string.Join(",", userList);
+        _capturedAnswers[q.id] = finalAnswerStr;
+
+        ShowFeedback(isCorrect, q);
+    }
+
+    private void ShowFeedback(bool isCorrect, QuizQuestion q)
+    {
+        feedbackPanel.SetActive(true);
+        feedbackActionButton.onClick.RemoveAllListeners();
+
+        feedbackTitleText.text = isCorrect ? "✅ Correct!" : "❌ Incorrect.";
+
+        string fallbackText = isCorrect ? "Well done!" : "Not quite.";
+        feedbackMessageText.text = !string.IsNullOrEmpty(q.feedbackText) ? q.feedbackText : fallbackText;
+
+        feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
+        feedbackActionButton.onClick.AddListener(() =>
+        {
+            feedbackPanel.SetActive(false);
+            if (_questionIndex < _quizData.questions.Count - 1)
+            {
+                _questionIndex++;
+                _timer = TimerDuration;
+                _isGameActive = true;
+                DisplayQuestion();
+            }
+            else
+            {
+                EndGame();
+            }
+        });
+    }
 
     private void EndGame()
     {
@@ -194,10 +233,10 @@ public class MCQ : MonoBehaviour
             {
                 int ptsEach = ScoreManager.Instance.pointsPerCorrectMCQ;
                 bool perfect = _correctCount == _quizData.questions.Count;
-                _pointsEarned = (_correctCount * ptsEach) + (perfect ? ScoreManager.Instance.perfectScoreBonus : 0);
+                int pointsEarned = (_correctCount * ptsEach) + (perfect ? ScoreManager.Instance.perfectScoreBonus : 0);
 
-                gameObject.SetActive(false); // Hide the quiz panel
-                _onCompleteCallback?.Invoke(_correctCount, _quizData.questions.Count, _pointsEarned); // Send data back!
+                gameObject.SetActive(false);
+                _onCompleteCallback?.Invoke(_correctCount, _quizData.questions.Count, pointsEarned);
             },
             onError: err =>
             {

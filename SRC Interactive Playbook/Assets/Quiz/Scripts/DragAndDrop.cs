@@ -8,20 +8,25 @@ using UnityEngine.UI;
 
 public class DragAndDrop : MonoBehaviour
 {
+    [Header("Header Text (From Firebase)")]
+    public TextMeshProUGUI titleText;
+    public TextMeshProUGUI instructionText;
+
     [Header("UI References")]
     public GameObject gamePanel;
     public Button submitButton;
 
     [Header("Matching Board Elements")]
-    [Tooltip("The layout group where the Poor Feedback rows will be spawned.")]
     public Transform rowsContainer;
-    [Tooltip("Prefab containing the DNDRowUI script, the Text, and the Drop Slot.")]
     public GameObject matchRowPrefab;
-
-    [Tooltip("The layout group at the bottom where draggable options start.")]
     public Transform optionsContainer;
-    [Tooltip("Prefab containing DraggableOption and a TextMeshProUGUI.")]
     public GameObject draggablePrefab;
+
+    [Header("Feedback Panel")]
+    public GameObject feedbackPanel;
+    public TextMeshProUGUI feedbackTitleText;
+    public TextMeshProUGUI feedbackMessageText;
+    public Button feedbackActionButton;
 
     // ── Runtime ────────────────────────────────────────────────
     private PlaybookQuiz _quizData;
@@ -33,32 +38,34 @@ public class DragAndDrop : MonoBehaviour
     private void Awake()
     {
         if (gamePanel != null) gamePanel.SetActive(false);
+        if (feedbackPanel != null) feedbackPanel.SetActive(false);
         if (submitButton != null) submitButton.onClick.AddListener(OnSubmitAnswer);
     }
 
     public void StartGame(PlaybookQuiz runtimeQuiz, Action<int, int, int> onComplete)
     {
-        if (runtimeQuiz == null || runtimeQuiz.questions == null || runtimeQuiz.questions.Count == 0)
-        {
-            Debug.LogError("[DragAndDrop] Invalid quiz data.");
-            return;
-        }
+        if (runtimeQuiz == null || runtimeQuiz.questions == null || runtimeQuiz.questions.Count == 0) return;
 
         _onCompleteCallback = onComplete;
         _quizData = runtimeQuiz;
         _correctCount = 0;
         _capturedAnswers.Clear();
 
+        if (titleText != null) titleText.text = _quizData.title;
+        if (instructionText != null) instructionText.text = _quizData.instructionText;
+
         gameObject.SetActive(true);
         if (gamePanel != null) gamePanel.SetActive(true);
+        if (feedbackPanel != null) feedbackPanel.SetActive(false);
 
         BuildMatchingBoard();
     }
 
-
     private void BuildMatchingBoard()
     {
         ClearBoard();
+        if (submitButton != null) submitButton.interactable = true;
+
         Dictionary<string, QuizChoice> choicePool = new Dictionary<string, QuizChoice>();
 
         foreach (var q in _quizData.questions)
@@ -70,16 +77,13 @@ public class DragAndDrop : MonoBehaviour
             if (rowUI != null)
             {
                 rowUI.poorFeedbackText.text = q.prompt;
-
                 rowUI.dropSlot.questionId = q.id;
             }
 
             foreach (var choice in q.choices)
             {
                 if (!choicePool.ContainsKey(choice.id))
-                {
                     choicePool.Add(choice.id, choice);
-                }
             }
         }
 
@@ -91,10 +95,7 @@ public class DragAndDrop : MonoBehaviour
             _spawnedObjects.Add(newOption);
 
             DraggableOption dragScript = newOption.GetComponentInChildren<DraggableOption>();
-            if (dragScript != null)
-            {
-                dragScript.choiceId = choice.id;
-            }
+            if (dragScript != null) dragScript.choiceId = choice.id;
 
             TextMeshProUGUI optionText = newOption.GetComponentInChildren<TextMeshProUGUI>();
             if (optionText != null) optionText.text = choice.text;
@@ -105,7 +106,6 @@ public class DragAndDrop : MonoBehaviour
     {
         foreach (var obj in _spawnedObjects) { if (obj != null) Destroy(obj); }
         _spawnedObjects.Clear();
-
         foreach (Transform child in rowsContainer) Destroy(child.gameObject);
         foreach (Transform child in optionsContainer) Destroy(child.gameObject);
     }
@@ -114,6 +114,7 @@ public class DragAndDrop : MonoBehaviour
     {
         if (submitButton != null) submitButton.interactable = false;
         _correctCount = 0;
+        bool allCorrect = true;
 
         foreach (Transform row in rowsContainer)
         {
@@ -121,28 +122,20 @@ public class DragAndDrop : MonoBehaviour
             if (rowUI == null) continue;
 
             string questionId = rowUI.dropSlot != null ? rowUI.dropSlot.questionId : null;
-            if (string.IsNullOrEmpty(questionId))
-            {
-                Debug.LogWarning($"[DragAndDrop] Skipping row '{row.name}' — no questionId assigned (stray/template row?).");
-                continue;
-            }
+            if (string.IsNullOrEmpty(questionId)) continue;
 
             var q = _quizData.questions.Find(x => x.id == questionId);
-
             string selectedChoiceId = "";
-            DraggableOption droppedOption = rowUI.dropSlot.GetComponentInChildren<DraggableOption>();
 
-            if (droppedOption != null)
-            {
-                selectedChoiceId = droppedOption.choiceId;
-            }
+            DraggableOption droppedOption = rowUI.dropSlot.GetComponentInChildren<DraggableOption>();
+            if (droppedOption != null) selectedChoiceId = droppedOption.choiceId;
 
             _capturedAnswers[questionId] = selectedChoiceId;
             bool isCorrect = (q != null && selectedChoiceId == q.correctAnswerId);
 
             if (isCorrect) _correctCount++;
+            else allCorrect = false;
 
-            // Visual Validation
             Image slotImage = rowUI.dropSlot.GetComponent<Image>();
             if (slotImage != null)
             {
@@ -152,27 +145,38 @@ public class DragAndDrop : MonoBehaviour
             }
         }
 
-        StartCoroutine(ShowFeedbackAndEnd());
+        ShowFeedback(allCorrect);
     }
 
-    private System.Collections.IEnumerator ShowFeedbackAndEnd()
+    private void ShowFeedback(bool allCorrect)
     {
-        yield return new WaitForSeconds(2f);
-        EndGame();
+        feedbackPanel.SetActive(true);
+        feedbackActionButton.onClick.RemoveAllListeners();
+
+        if (allCorrect)
+        {
+            feedbackTitleText.text = "✅ Excellent!";
+            feedbackMessageText.text = _quizData.correctFeedbackText;
+
+            feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
+            feedbackActionButton.onClick.AddListener(() => EndGame());
+        }
+        else
+        {
+            feedbackTitleText.text = "❌ Not quite.";
+            feedbackMessageText.text = _quizData.incorrectFeedbackText;
+
+            feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try Again";
+            feedbackActionButton.onClick.AddListener(() =>
+            {
+                feedbackPanel.SetActive(false);
+                BuildMatchingBoard();
+            });
+        }
     }
 
     private void EndGame()
     {
-        foreach (var kvp in _capturedAnswers)
-        {
-            Debug.Log($"[DragAndDrop] key='{kvp.Key}' (len={kvp.Key.Length})  value='{kvp.Value}' (len={kvp.Value?.Length ?? 0})");
-
-            if (kvp.Key.IndexOfAny(new[] { '.', '#', '$', '[', ']', '/' }) >= 0)
-                Debug.LogError($"[DragAndDrop] ILLEGAL Firebase key character in questionId: '{kvp.Key}'");
-
-            if (kvp.Value != null && kvp.Value.IndexOfAny(new[] { '.', '#', '$', '[', ']', '/' }) >= 0)
-                Debug.LogWarning($"[DragAndDrop] Suspicious characters in choiceId value: '{kvp.Value}'");
-        }
         ScoreManager.Instance.SubmitDragDropScore(
             _quizData.id, _correctCount, _quizData.questions.Count, _capturedAnswers,
             onSuccess: () =>
@@ -183,11 +187,9 @@ public class DragAndDrop : MonoBehaviour
 
                 gameObject.SetActive(false);
                 _onCompleteCallback?.Invoke(_correctCount, _quizData.questions.Count, pointsEarned);
-                Debug.Log("[DragAndDrop] Firebase write CONFIRMED successful despite any console noise.");
             },
             onError: err =>
             {
-                Debug.LogError($"[DragAndDrop] Score save failed: {err}");
                 gameObject.SetActive(false);
                 _onCompleteCallback?.Invoke(_correctCount, _quizData.questions.Count, 0);
             }

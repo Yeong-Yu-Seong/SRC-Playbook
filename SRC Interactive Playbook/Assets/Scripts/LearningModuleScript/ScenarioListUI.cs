@@ -63,7 +63,6 @@ namespace RedCross.Playbook.UI
             foreach (var c in _spawnedCards) Destroy(c);
             _spawnedCards.Clear();
 
-            // ── NEW: Filter by Track ──────────────────────────────────────
             string userTrack = UserManager.Instance?.CurrentUser?.selectedTrack;
 
             if (entries != null)
@@ -89,6 +88,8 @@ namespace RedCross.Playbook.UI
             {
                 var go = Instantiate(exhibitCardPrefab, cardContainer, false);
 
+                // Inside the foreach (var entry in entries) loop:
+
                 var rt = go.GetComponent<RectTransform>();
                 if (rt != null)
                 {
@@ -96,22 +97,24 @@ namespace RedCross.Playbook.UI
                     rt.anchorMax = new Vector2(0f, 1f);
                     rt.pivot = new Vector2(0f, 1f);
 
-                    // 1. Grab the Firebase coordinates
-                    float finalX = entry.wallX;
-                    float finalY = entry.wallY;
+                    float finalX;
+                    float finalY;
 
-                    // 2. If we are on Desktop, scale the coordinates up to match the 1920x1080 canvas!
-                    if (!ResponsiveLayoutManager.Instance.IsMobileActive)
+                    // Route to the correct coordinates based on the active layout
+                    if (ResponsiveLayoutManager.Instance.IsMobileActive)
                     {
-                        finalX *= (1206f / 1920f);
-
-                        finalY *= (1206f / 1920f);
+                        finalX = entry.wallX;
+                        finalY = entry.wallY;
+                    }
+                    else
+                    {
+                        // Desktop uses the new dedicated coordinates!
+                        finalX = entry.desktopWallX;
+                        finalY = entry.desktopWallY;
                     }
 
-                    // 3. Apply the scaled coordinates
+                    // Apply the coordinates
                     rt.anchoredPosition = new Vector2(finalX, -finalY);
-
-                    // (Don't set sizeDelta here anymore, since we moved the sizing logic inside ExhibitCardUI in the previous fix!)
                 }
 
                 var card = go.GetComponent<ExhibitCardUI>();

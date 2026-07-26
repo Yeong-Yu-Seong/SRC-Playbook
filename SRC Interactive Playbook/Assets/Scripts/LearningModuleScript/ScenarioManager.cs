@@ -44,7 +44,6 @@ namespace RedCross.Playbook.Scenario
         [SerializeField] private LoadingOverlayUI desktopLoadingUI;
 
         // ── Dynamic UI Routers ─────────────────────────────────────
-        // These magically return the correct panel based on screen size!
         private ScenarioIntroUI introUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileIntroUI : desktopIntroUI;
         private NarrativePartUI narrativeUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileNarrativeUI : desktopNarrativeUI;
         private QuestionPartUI questionUI => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileQuestionUI : desktopQuestionUI;
@@ -54,6 +53,13 @@ namespace RedCross.Playbook.Scenario
 
         [Header("Background")]
         [SerializeField] private UnityEngine.UI.RawImage backgroundImage;
+
+        [Header("Video System")]
+        [SerializeField] private UnityEngine.Video.VideoPlayer videoPlayer;
+        [SerializeField] private UnityEngine.UI.RawImage videoSurface;
+
+        [Header("Audio System")]
+        [SerializeField] private AudioSource audioSource;
 
         // ── Runtime state ──────────────────────────────────────────
         private PlaybookScenario _scenario;
@@ -76,6 +82,8 @@ namespace RedCross.Playbook.Scenario
         [SerializeField] private MCQ mobileMcqSystem;
         [SerializeField] private FactVsOpinion mobileFactsSystem;
         [SerializeField] private DragAndDrop mobileDragDropSystem;
+        [SerializeField] private DNDRanking mobileRankingSystem;
+        [SerializeField] private DNDSorting mobileSortingSystem;
 
         // ── Desktop Quiz Elements ──────────────────────────────────
         [Header("Desktop Quiz Transition UI")]
@@ -86,14 +94,17 @@ namespace RedCross.Playbook.Scenario
         [SerializeField] private MCQ desktopMcqSystem;
         [SerializeField] private FactVsOpinion desktopFactsSystem;
         [SerializeField] private DragAndDrop desktopDragDropSystem;
+        [SerializeField] private DNDRanking desktopRankingSystem;
+        [SerializeField] private DNDSorting desktopSortingSystem;
 
         // ── Dynamic Quiz Routers ───────────────────────────────────
         private GameObject quizStartPanel => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileQuizStartPanel : desktopQuizStartPanel;
         private UnityEngine.UI.Button startQuizButton => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileStartQuizButton : desktopStartQuizButton;
-
         private MCQ mcqSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileMcqSystem : desktopMcqSystem;
         private FactVsOpinion factsSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileFactsSystem : desktopFactsSystem;
         private DragAndDrop dragDropSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileDragDropSystem : desktopDragDropSystem;
+        private DNDRanking rankingSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileRankingSystem : desktopRankingSystem;
+        private DNDSorting sortingSystem => ResponsiveLayoutManager.Instance.IsMobileActive ? mobileSortingSystem : desktopSortingSystem;
 
         // ══════════════════════════════════════════════════════════
         //  LIFECYCLE
@@ -117,8 +128,7 @@ namespace RedCross.Playbook.Scenario
 
         public void StartScenario(string scenarioId)
         {
-            if (_isRunning) { Debug.LogWarning("[ScenarioManager] Already running."); return; }
-            if (string.IsNullOrEmpty(scenarioId)) { Debug.LogError("[ScenarioManager] Empty scenarioId."); return; }
+            if (_isRunning) return;
 
             ResetState();
             loadingUI.Show("Loading scenario…");
@@ -128,8 +138,33 @@ namespace RedCross.Playbook.Scenario
                 {
                     _scenario = scenario;
                     CountQuestions();
-                    loadingUI.Hide();
-                    ShowIntro();
+
+                    string userId = FirebaseManager.Instance?.CurrentUserId;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        FirebaseScenarioService.Instance.FetchUserProgress(userId, scenarioId, progress =>
+                        {
+                            if (progress != null && !progress.completed && progress.answeredChoiceIds.Count > 0)
+                            {
+                                _answeredChoiceIds = progress.answeredChoiceIds;
+                                _correctAnswers = progress.correctAnswers;
+                                _pointsEarned = progress.score;
+
+                                FastForwardToResumePoint();
+                                loadingUI.Hide();
+                            }
+                            else
+                            {
+                                loadingUI.Hide();
+                                ShowIntro();
+                            }
+                        });
+                    }
+                    else
+                    {
+                        loadingUI.Hide();
+                        ShowIntro();
+                    }
                 },
                 onError: err =>
                 {
@@ -141,8 +176,33 @@ namespace RedCross.Playbook.Scenario
         public void StartScenarioFromPending() =>
             StartScenario(ScenarioSceneBootstrapper.PendingScenarioId);
 
+        private void FastForwardToResumePoint()
+        {
+            _isRunning = true;
+            _currentPartIndex = 0;
+            int questionsPassed = 0;
+
+            for (int i = 0; i < _scenario.sceneParts.Count; i++)
+            {
+                if (_scenario.sceneParts[i].type == ScenePartType.Question || _scenario.sceneParts[i].type == ScenePartType.Activity)
+                {
+                    if (questionsPassed < _answeredChoiceIds.Count)
+                    {
+                        questionsPassed++;
+                    }
+                    else
+                    {
+                        // Stop at the scene right before the unanswered question
+                        _currentPartIndex = Mathf.Max(0, i - 1);
+                        break;
+                    }
+                }
+            }
+            PlayCurrentPart();
+        }
+
         // ══════════════════════════════════════════════════════════
-        //  PLAYBACK
+        //  PLAYBACK & BRANCH ROUTING
         // ══════════════════════════════════════════════════════════
 
         private void ShowIntro()
@@ -166,11 +226,14 @@ namespace RedCross.Playbook.Scenario
 
             var part = _scenario.sceneParts[_currentPartIndex];
             LoadBackground(part.backgroundImageUrl);
+            LoadVideo(part.videoUrl);
+            LoadAudio(part.audioUrl);
 
             switch (part.type)
             {
                 case ScenePartType.Narrative: PlayNarrativePart(part); break;
                 case ScenePartType.Question: PlayQuestionPart(part); break;
+                case ScenePartType.Activity: PlayInteractiveActivityPart(part); break;
                 default:
                     _currentPartIndex++;
                     PlayCurrentPart();
@@ -178,8 +241,67 @@ namespace RedCross.Playbook.Scenario
             }
         }
 
+        private void PlayInteractiveActivityPart(ScenePart part)
+        {
+            LoadVideo("");
+            if (loadingUI != null) loadingUI.Show("Loading activity...");
+
+            FirebaseScenarioService.Instance.FetchQuizById(part.linkedActivityId, fetchedQuiz =>
+            {
+                if (loadingUI != null) loadingUI.Hide();
+
+                if (fetchedQuiz == null)
+                {
+                    _currentPartIndex++;
+                    PlayCurrentPart();
+                    return;
+                }
+                LaunchMidScenarioQuizSystem(fetchedQuiz);
+            });
+        }
+
+        private void LaunchMidScenarioQuizSystem(PlaybookQuiz fetchedQuiz)
+        {
+            Action<int, int, int> onActivityFinished = (correct, total, points) =>
+            {
+                _pointsEarned += points;
+                OnPointsAwarded?.Invoke(points);
+                SaveMidScenarioProgress();
+
+                _currentPartIndex++;
+                PlayCurrentPart();
+            };
+
+            switch (fetchedQuiz.type)
+            {
+                case "MCQ":
+                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, onActivityFinished);
+                    break;
+                case "MultiMCQ": 
+                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, onActivityFinished); 
+                    break;
+                case "FactsVsOpinions":
+                    if (factsSystem != null) factsSystem.StartGame(fetchedQuiz, onActivityFinished);
+                    break;
+                case "DragAndDrop":
+                    if (dragDropSystem != null) dragDropSystem.StartGame(fetchedQuiz, onActivityFinished);
+                    break;
+                case "Ranking":
+                    if (rankingSystem != null) rankingSystem.StartGame(fetchedQuiz, onActivityFinished);
+                    break;
+                case "Sorting":
+                    if (sortingSystem != null) sortingSystem.StartGame(fetchedQuiz, onActivityFinished); 
+                    break;
+                default:
+                    onActivityFinished(0, 0, 0);
+                    break;
+            }
+        }
+
         private void CheckForQuizAssessment()
         {
+            LoadVideo("");
+
             if (loadingUI != null) loadingUI.Show("Checking for assessment...");
 
             FirebaseScenarioService.Instance.FetchQuizForScenario(_scenario.id, (fetchedQuiz) =>
@@ -188,11 +310,10 @@ namespace RedCross.Playbook.Scenario
 
                 if (fetchedQuiz == null || string.IsNullOrEmpty(fetchedQuiz.type) || fetchedQuiz.type == "None" || fetchedQuiz.questions == null || fetchedQuiz.questions.Count == 0)
                 {
-                    FinishScenario(0, 0, 0); // No quiz available, finish immediately
+                    FinishScenario(0, 0, 0);
                     return;
                 }
 
-                // Show the "Now let's test your knowledge" transition screen
                 if (quizStartPanel != null)
                 {
                     quizStartPanel.SetActive(true);
@@ -205,7 +326,6 @@ namespace RedCross.Playbook.Scenario
                 }
                 else
                 {
-                    // Fallback just in case the panel isn't assigned
                     LaunchQuizSystem(fetchedQuiz);
                 }
             });
@@ -213,12 +333,15 @@ namespace RedCross.Playbook.Scenario
 
         private void LaunchQuizSystem(PlaybookQuiz fetchedQuiz)
         {
-            // Route to the correct Quiz Panel based on the DB type
             switch (fetchedQuiz.type)
             {
                 case "MCQ":
                     if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, FinishScenario);
                     else FinishScenario(0, 0, 0);
+                    break;
+                case "MultiMCQ":
+                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, FinishScenario); 
+                    else FinishScenario(0, 0, 0); 
                     break;
                 case "FactsVsOpinions":
                     if (factsSystem != null) factsSystem.StartGame(fetchedQuiz, FinishScenario);
@@ -227,6 +350,13 @@ namespace RedCross.Playbook.Scenario
                 case "DragAndDrop":
                     if (dragDropSystem != null) dragDropSystem.StartGame(fetchedQuiz, FinishScenario);
                     else FinishScenario(0, 0, 0);
+                    break;
+                case "Ranking":
+                    if (rankingSystem != null) rankingSystem.StartGame(fetchedQuiz, FinishScenario);
+                    else FinishScenario(0, 0, 0);
+                    break;
+                case "Sorting":
+                    if (sortingSystem != null) sortingSystem.StartGame(fetchedQuiz, FinishScenario);
                     break;
                 default:
                     FinishScenario(0, 0, 0);
@@ -256,6 +386,8 @@ namespace RedCross.Playbook.Scenario
         private void HandleChoiceSelected(Choice choice)
         {
             _answeredChoiceIds.Add(choice.id);
+
+            // Award points only if they got it right on this single attempt
             if (choice.isCorrect)
             {
                 _correctAnswers++;
@@ -263,27 +395,51 @@ namespace RedCross.Playbook.Scenario
                 OnPointsAwarded?.Invoke(_scenario.pointsPerCorrect);
             }
 
+            SaveMidScenarioProgress();
+
             feedbackUI.Show(choice, onDismissed: () =>
             {
                 feedbackUI.Hide();
+
+                // Advance to the next part regardless of whether they were right or wrong
                 _currentPartIndex++;
                 PlayCurrentPart();
             });
         }
 
+        private void SaveMidScenarioProgress()
+        {
+            string userId = FirebaseManager.Instance?.CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            var progress = new UserScenarioProgress
+            {
+                scenarioId = _scenario.id,
+                completed = false,
+                score = _pointsEarned,
+                correctAnswers = _correctAnswers,
+                totalQuestions = _totalQuestions,
+                completedTimestamp = 0,
+                answeredChoiceIds = _answeredChoiceIds
+            };
+
+            FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress, null);
+        }
+
         // ══════════════════════════════════════════════════════════
         //  COMPLETION
         // ══════════════════════════════════════════════════════════
+
         private void FinishScenario(int quizCorrect, int quizTotal, int quizPointsEarned)
         {
             _isRunning = false;
 
-            // Calculate the total points earned in THIS specific run
             int currentRunScore = _pointsEarned + _scenario.pointsOnCompletion;
             OnPointsAwarded?.Invoke(_scenario.pointsOnCompletion);
 
             var progress = new UserScenarioProgress
             {
+                scenarioId = _scenario.id,
                 completed = true,
                 score = currentRunScore,
                 correctAnswers = _correctAnswers,
@@ -295,39 +451,32 @@ namespace RedCross.Playbook.Scenario
             string userId = FirebaseManager.Instance?.CurrentUserId;
             if (!string.IsNullOrEmpty(userId))
             {
-                // 1. Fetch previous progress to calculate the score delta
                 FirebaseScenarioService.Instance.FetchUserProgress(userId, _scenario.id, previousProgress =>
                 {
-                    int previousBestScore = previousProgress != null ? previousProgress.score : 0;
-
-                    // Calculate how many NEW points they earned (if any)
+                    int previousBestScore = (previousProgress != null && previousProgress.completed) ? previousProgress.score : 0;
                     int scoreDelta = currentRunScore - previousBestScore;
-
-                    // Check if this run is a new high score
                     bool isNewHighScore = scoreDelta > 0;
 
-                    // 2. Only award points to their global total if they beat their high score
                     if (isNewHighScore && UserManager.Instance != null)
                     {
                         UserManager.Instance.AwardSimulationPoints(_scenario.id, scoreDelta);
                     }
 
-                    // 3. Only overwrite the scenario progress in the database if it's a new high score
-                    if (currentRunScore >= previousBestScore)
+                    if (currentRunScore >= previousBestScore || previousProgress == null || !previousProgress.completed)
                     {
                         FirebaseScenarioService.Instance.SaveUserProgress(userId, _scenario.id, progress,
                             onComplete: () => CheckPostSurveyEligibility(userId));
                     }
                     else
                     {
+                        Debug.Log($"[ScenarioManager] Score {currentRunScore} did not beat high score {previousBestScore}. Discarding lower attempt.");
                         CheckPostSurveyEligibility(userId);
                     }
 
-                    // 4. Trigger UI and Events INSIDE the callback so it waits for the calculation
                     OnScenarioCompleted?.Invoke(progress);
 
                     completeUI.Show(progress, _scenario, quizCorrect, quizTotal, quizPointsEarned,
-                        isNewHighScore, // Now safely in scope!
+                        isNewHighScore,
                         onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
                         onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
                     );
@@ -335,11 +484,9 @@ namespace RedCross.Playbook.Scenario
             }
             else
             {
-                // Fallback in case the user is somehow not logged in (e.g., testing offline)
                 OnScenarioCompleted?.Invoke(progress);
-
                 completeUI.Show(progress, _scenario, quizCorrect, quizTotal, quizPointsEarned,
-                    true, // Default to true if no previous data exists
+                    true,
                     onHomeClicked: () => UnityEngine.SceneManagement.SceneManager.LoadScene("HomeScene"),
                     onReplayClicked: () => { string id = _scenario.id; ResetState(); StartScenario(id); }
                 );
@@ -348,17 +495,14 @@ namespace RedCross.Playbook.Scenario
 
         private void CheckPostSurveyEligibility(string userId)
         {
-            // Skip if they've already done the post-survey
             if (UserManager.Instance.CurrentUser.hasCompletedPostSurvey) return;
 
             FirebaseScenarioService.Instance.FetchScenarioIndex(index =>
             {
-                // Filter for only "Main" scenarios
                 var mainScenarios = index.FindAll(s => s.category == "Main");
                 int mainCount = mainScenarios.Count;
                 int completedCount = 0;
 
-                // Check user progress for each main scenario
                 foreach (var scenario in mainScenarios)
                 {
                     FirebaseScenarioService.Instance.FetchUserProgress(userId, scenario.id, userProgress =>
@@ -368,11 +512,9 @@ namespace RedCross.Playbook.Scenario
                             completedCount++;
                         }
 
-                        // If all main scenarios are checked and completed, flag the survey
                         if (completedCount == mainCount)
                         {
                             Debug.Log("[ScenarioManager] All main scenarios completed! Flagging post-survey.");
-                            // You can set a PlayerPref here to tell HomeScene to show the survey on load
                             PlayerPrefs.SetInt("ShowPostSurvey", 1);
                         }
                     });
@@ -393,6 +535,7 @@ namespace RedCross.Playbook.Scenario
             _isRunning = false;
             _answeredChoiceIds = new List<string>();
             completeUI.Hide();
+            LoadVideo("");
         }
 
         private void CountQuestions()
@@ -417,6 +560,62 @@ namespace RedCross.Playbook.Scenario
             if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
                 backgroundImage.texture =
                     UnityEngine.Networking.DownloadHandlerTexture.GetContent(req);
+        }
+
+        private void LoadVideo(string url)
+        {
+            if (string.IsNullOrEmpty(url) || videoPlayer == null)
+            {
+                if (videoSurface != null) videoSurface.gameObject.SetActive(false);
+                if (videoPlayer != null) videoPlayer.Stop();
+                return;
+            }
+
+            if (videoSurface != null) videoSurface.gameObject.SetActive(true);
+            videoPlayer.source = UnityEngine.Video.VideoSource.Url;
+            videoPlayer.url = url;
+            videoPlayer.Prepare();
+
+            videoPlayer.prepareCompleted += (vp) => { vp.Play(); };
+        }
+
+        private void LoadAudio(string url)
+        {
+            if (string.IsNullOrEmpty(url) || audioSource == null)
+            {
+                if (audioSource != null) audioSource.Stop();
+                return;
+            }
+
+            if (url.StartsWith("http"))
+            {
+                StartCoroutine(LoadAudioFromUrl(url));
+            }
+            else
+            {
+                var clip = Resources.Load<AudioClip>(url);
+                if (clip != null)
+                {
+                    audioSource.clip = clip;
+                    audioSource.Play();
+                }
+            }
+        }
+
+        private IEnumerator LoadAudioFromUrl(string url)
+        {
+            AudioType type = url.Contains(".wav") ? AudioType.WAV : AudioType.MPEG;
+            using var req = UnityEngine.Networking.UnityWebRequestMultimedia.GetAudioClip(url, type);
+            yield return req.SendWebRequest();
+            if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                audioSource.clip = UnityEngine.Networking.DownloadHandlerAudioClip.GetContent(req);
+                audioSource.Play();
+            }
+            else
+            {
+                Debug.LogError($"[ScenarioManager] Audio load failed: {req.error}");
+            }
         }
 
         private void ValidateReferences()
