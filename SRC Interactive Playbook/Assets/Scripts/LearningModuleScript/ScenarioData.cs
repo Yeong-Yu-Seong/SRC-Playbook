@@ -23,6 +23,7 @@ namespace RedCross.Playbook.Data
         public string exhibitNumber;
         public string outlineDescription;
         public string thumbnailUrl;
+        public string frameUrl;
         public bool isPublished;
         public bool isMainScenario;
         public int pointsOnCompletion;
@@ -100,6 +101,7 @@ namespace RedCross.Playbook.Data
         public string id;
         public string exhibitNumber;
         public string thumbnailUrl;
+        public string frameUrl;
         public bool isPublished;
         public int pointsOnCompletion;
         public int totalQuestions;
@@ -167,14 +169,15 @@ namespace RedCross.Playbook.Data
         public string title;
         /// <summary>"FactsVsOpinions", "MCQ", or "DragAndDrop".</summary>
         public string type;
+        public string instructionText;
         /// <summary>Links this quiz to its parent scenario exhibit.</summary>
         public string linkedScenarioId;
-        public int pointsOnCompletion;
-        public bool isPublished;
-        public int sortOrder;
-        public string instructionText;
         public string correctFeedbackText;
         public string incorrectFeedbackText;
+
+        public int pointsOnCompletion;
+        public int sortOrder;
+        public bool isPublished;
 
         public List<QuizQuestion> questions = new();
     }

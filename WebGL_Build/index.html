@@ -4,21 +4,22 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity Web Player | SRC Interactive Playbook</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="shortcut icon" href="TemplateData/Logo.png">
     <link rel="stylesheet" href="TemplateData/style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
       var firebaseConfig = {
-        apiKey: "AIzaSyDqb_k2mGsPb5B9jIBM3h2r0fatAmIfT5Y",
-        authDomain: "mdc-interactiveplaybook.firebaseapp.com",
-        databaseURL: "https://mdc-interactiveplaybook-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "mdc-interactiveplaybook",
-        storageBucket: "mdc-interactiveplaybook.firebasestorage.app",
-        messagingSenderId: "523506094253",
-        appId: "1:523506094253:web:30f10891cd6d8ae758f624"
-      };
+      apiKey: "AIzaSyDqb_k2mGsPb5B9jIBM3h2r0fatAmIfT5Y",
+      authDomain: "mdc-interactiveplaybook.firebaseapp.com",
+      databaseURL: "https://mdc-interactiveplaybook-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "mdc-interactiveplaybook",
+      storageBucket: "mdc-interactiveplaybook.firebasestorage.app",
+      messagingSenderId: "523506094253",
+      appId: "1:523506094253:web:30f10891cd6d8ae758f624"
+    };
+
       firebase.initializeApp(firebaseConfig);
     </script>
   </head>
@@ -86,8 +87,6 @@
         // },
       };
 
-      config.matchWebGLToCanvasSize = true;
-      config.devicePixelRatio = window.devicePixelRatio;
       // By default, Unity keeps WebGL canvas render target size matched with
       // the DOM size of the canvas element (scaled by window.devicePixelRatio)
       // Set this to false if you want to decouple this synchronization from
@@ -135,6 +134,18 @@
               }).then((unityInstance) => {
                 document.querySelector("#unity-loading-bar").style.display = "none";
                 window.unityInstance = unityInstance;
+                firebase.auth().onAuthStateChanged((user) => {
+                    if (user) {
+                        // Package the user data
+                        var userData = {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName
+                        };
+                        // Send it directly to your FirebaseManager GameObject
+                        unityInstance.SendMessage('FirebaseManager', 'OnAutoLoginSuccess', JSON.stringify(userData));
+                    }
+                });
                 document.querySelector("#unity-fullscreen-button").onclick = () => {
                   unityInstance.SetFullscreen(1);
                 };

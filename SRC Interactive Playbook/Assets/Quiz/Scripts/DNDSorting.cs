@@ -159,14 +159,22 @@ public class DNDSorting : MonoBehaviour
 
         if (isCorrect)
         {
-            feedbackTitleText.text = "✅ Great job!";
-            feedbackMessageText.text = _quizData.correctFeedbackText;
+            feedbackTitleText.text = "Great job!";
         }
         else
         {
-            feedbackTitleText.text = "❌ Not quite.";
-            feedbackMessageText.text = _quizData.incorrectFeedbackText;
+            feedbackTitleText.text = "Not quite.";
         }
+
+        // Calculate total points earned for the board
+        int ptsEach = ScoreManager.Instance.pointsPerCorrectDragDrop;
+        bool perfect = correctCount == _quizData.questions.Count;
+        int pointsEarned = (correctCount * ptsEach) + (perfect ? ScoreManager.Instance.perfectScoreBonus : 0);
+
+        string pointsString = pointsEarned > 0 ? $"<color=#2CA060><b>+{pointsEarned} Points</b></color>" : $"<color=#808080><b>+0 Points</b></color>";
+        string baseMessage = isCorrect ? _quizData.correctFeedbackText : _quizData.incorrectFeedbackText;
+
+        feedbackMessageText.text = baseMessage + $"\n\n{pointsString}";
 
         feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
         feedbackActionButton.onClick.AddListener(() => EndGame(correctCount, capturedAnswers));

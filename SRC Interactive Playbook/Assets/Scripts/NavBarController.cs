@@ -92,12 +92,8 @@ public class NavBarController : MonoBehaviour
 
         if (!_isScenarioScene)
         {
-            // FIX 1: Switch the panels immediately in Awake. 
-            // If we wait for Start(), it won't run if the object gets disabled!
             SwitchTab(RequestedTab);
 
-            // FIX 2: Check if the user is already logged in (e.g., returning from a scenario).
-            // If they are, keep the NavBar visible. If not, hide it and wait for the login screen.
             bool isLoggedIn = UserManager.Instance != null && 
                               UserManager.Instance.CurrentUser != null;
             

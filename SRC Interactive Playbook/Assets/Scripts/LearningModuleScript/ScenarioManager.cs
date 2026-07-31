@@ -10,6 +10,12 @@
 //   At the end: ScenarioCompleteUI + saves progress + awards points.
 // ============================================================
 
+// ============================================================
+// ScenarioManager.cs
+// Drives the complete play session for one scenario.
+// Attach to a persistent manager GameObject in the Scenario scene.
+// ============================================================
+
 using RedCross.Playbook.Data;
 using RedCross.Playbook.Firebase;
 using RedCross.Playbook.UI;
@@ -69,6 +75,9 @@ namespace RedCross.Playbook.Scenario
         private int _pointsEarned;
         private List<string> _answeredChoiceIds = new();
         private bool _isRunning;
+
+        // Prevents mid-scenario saves from overwriting a completed high score
+        private bool _isReplayingCompletedScenario;
 
         public event Action<int> OnPointsAwarded;
         public event Action<UserScenarioProgress> OnScenarioCompleted;
@@ -144,8 +153,16 @@ namespace RedCross.Playbook.Scenario
                     {
                         FirebaseScenarioService.Instance.FetchUserProgress(userId, scenarioId, progress =>
                         {
-                            if (progress != null && !progress.completed && progress.answeredChoiceIds.Count > 0)
+                            if (progress != null && progress.completed)
                             {
+                                // User is replaying. Protect their high score from mid-scenario overwrites.
+                                _isReplayingCompletedScenario = true;
+                                loadingUI.Hide();
+                                ShowIntro();
+                            }
+                            else if (progress != null && !progress.completed && progress.answeredChoiceIds.Count > 0)
+                            {
+                                _isReplayingCompletedScenario = false;
                                 _answeredChoiceIds = progress.answeredChoiceIds;
                                 _correctAnswers = progress.correctAnswers;
                                 _pointsEarned = progress.score;
@@ -155,6 +172,7 @@ namespace RedCross.Playbook.Scenario
                             }
                             else
                             {
+                                _isReplayingCompletedScenario = false;
                                 loadingUI.Hide();
                                 ShowIntro();
                             }
@@ -181,6 +199,7 @@ namespace RedCross.Playbook.Scenario
             _isRunning = true;
             _currentPartIndex = 0;
             int questionsPassed = 0;
+            bool foundResumePoint = false;
 
             for (int i = 0; i < _scenario.sceneParts.Count; i++)
             {
@@ -192,12 +211,27 @@ namespace RedCross.Playbook.Scenario
                     }
                     else
                     {
-                        // Stop at the scene right before the unanswered question
-                        _currentPartIndex = Mathf.Max(0, i - 1);
+                        // We found the unanswered question/activity at index 'i'.
+                        // Let's rewind to the nearest Narrative part immediately preceding this question for context.
+                        int startIndex = i;
+                        while (startIndex > 0 && _scenario.sceneParts[startIndex - 1].type == ScenePartType.Narrative)
+                        {
+                            startIndex--;
+                        }
+
+                        _currentPartIndex = startIndex;
+                        foundResumePoint = true;
                         break;
                     }
                 }
             }
+
+            // If they answered all questions but dropped out at the final assessment
+            if (!foundResumePoint && questionsPassed == _answeredChoiceIds.Count)
+            {
+                _currentPartIndex = _scenario.sceneParts.Count;
+            }
+
             PlayCurrentPart();
         }
 
@@ -266,6 +300,11 @@ namespace RedCross.Playbook.Scenario
             {
                 _pointsEarned += points;
                 OnPointsAwarded?.Invoke(points);
+
+                // CRITICAL FIX: Track that this activity was completed so the resume logic
+                // knows to skip past it, preventing double-counting of points/answers!
+                _answeredChoiceIds.Add($"activity_{fetchedQuiz.id}");
+
                 SaveMidScenarioProgress();
 
                 _currentPartIndex++;
@@ -277,8 +316,8 @@ namespace RedCross.Playbook.Scenario
                 case "MCQ":
                     if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, onActivityFinished);
                     break;
-                case "MultiMCQ": 
-                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, onActivityFinished); 
+                case "MultiMCQ":
+                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, onActivityFinished);
                     break;
                 case "FactsVsOpinions":
                     if (factsSystem != null) factsSystem.StartGame(fetchedQuiz, onActivityFinished);
@@ -290,7 +329,7 @@ namespace RedCross.Playbook.Scenario
                     if (rankingSystem != null) rankingSystem.StartGame(fetchedQuiz, onActivityFinished);
                     break;
                 case "Sorting":
-                    if (sortingSystem != null) sortingSystem.StartGame(fetchedQuiz, onActivityFinished); 
+                    if (sortingSystem != null) sortingSystem.StartGame(fetchedQuiz, onActivityFinished);
                     break;
                 default:
                     onActivityFinished(0, 0, 0);
@@ -340,8 +379,8 @@ namespace RedCross.Playbook.Scenario
                     else FinishScenario(0, 0, 0);
                     break;
                 case "MultiMCQ":
-                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, FinishScenario); 
-                    else FinishScenario(0, 0, 0); 
+                    if (mcqSystem != null) mcqSystem.StartGame(fetchedQuiz, FinishScenario);
+                    else FinishScenario(0, 0, 0);
                     break;
                 case "FactsVsOpinions":
                     if (factsSystem != null) factsSystem.StartGame(fetchedQuiz, FinishScenario);
@@ -409,6 +448,10 @@ namespace RedCross.Playbook.Scenario
 
         private void SaveMidScenarioProgress()
         {
+            // CRITICAL FIX: If they are replaying a completed scenario, do NOT save 
+            // mid-progress. This prevents overwriting a high score with "completed: false".
+            if (_isReplayingCompletedScenario) return;
+
             string userId = FirebaseManager.Instance?.CurrentUserId;
             if (string.IsNullOrEmpty(userId)) return;
 
@@ -495,27 +538,42 @@ namespace RedCross.Playbook.Scenario
 
         private void CheckPostSurveyEligibility(string userId)
         {
-            if (UserManager.Instance.CurrentUser.hasCompletedPostSurvey) return;
+            if (UserManager.Instance == null || UserManager.Instance.CurrentUser == null || UserManager.Instance.CurrentUser.hasCompletedPostSurvey) return;
+
+            // Get the user's selected track (e.g., "Manager" or "Employee")
+            string userTrack = UserManager.Instance.CurrentUser.selectedTrack;
 
             FirebaseScenarioService.Instance.FetchScenarioIndex(index =>
             {
-                var mainScenarios = index.FindAll(s => s.category == "Main");
+                // Filter scenarios to ONLY include "Main" scenarios that match the user's track
+                var mainScenarios = index.FindAll(s => s.category == "Main" && (s.track == userTrack || string.IsNullOrEmpty(s.track) || s.track == "All"));
+
                 int mainCount = mainScenarios.Count;
+                if (mainCount == 0) return; // Saftey check if no scenarios exist for this track yet
+
                 int completedCount = 0;
+                int processedCount = 0; // Tracks how many Firebase callbacks have finished
 
                 foreach (var scenario in mainScenarios)
                 {
                     FirebaseScenarioService.Instance.FetchUserProgress(userId, scenario.id, userProgress =>
                     {
+                        processedCount++; // Mark this scenario check as finished
+
                         if (userProgress != null && userProgress.completed)
                         {
                             completedCount++;
                         }
 
-                        if (completedCount == mainCount)
+                        // Only evaluate the final result once ALL async Firebase checks have returned
+                        if (processedCount == mainCount)
                         {
-                            Debug.Log("[ScenarioManager] All main scenarios completed! Flagging post-survey.");
-                            PlayerPrefs.SetInt("ShowPostSurvey", 1);
+                            if (completedCount == mainCount)
+                            {
+                                Debug.Log($"[ScenarioManager] All {mainCount} main scenarios for track '{userTrack}' completed! Flagging post-survey.");
+                                PlayerPrefs.SetInt("ShowPostSurvey", 1);
+                                PlayerPrefs.Save();
+                            }
                         }
                     });
                 }
@@ -533,6 +591,7 @@ namespace RedCross.Playbook.Scenario
             _totalQuestions = 0;
             _pointsEarned = 0;
             _isRunning = false;
+            _isReplayingCompletedScenario = false;
             _answeredChoiceIds = new List<string>();
             completeUI.Hide();
             LoadVideo("");

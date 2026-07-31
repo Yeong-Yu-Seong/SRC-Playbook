@@ -134,6 +134,19 @@ public class FirebaseManager : MonoBehaviour
     public void OnLogoutSuccess(string info) { Debug.Log("Signed out."); }
     public void OnLogoutFailed(string err) { Debug.LogError("Sign out failed: " + err); }
 
+    public void OnAutoLoginSuccess(string userDataJSON)
+    {
+        Debug.Log("[FirebaseManager] Auto-login triggered by browser refresh!");
+        var authData = JsonUtility.FromJson<WebGLAuthResponse>(userDataJSON);
+        _currentUserId = authData.uid;
+
+        LoadUserDocument(user =>
+        {
+            UserManager.Instance.SetUserData(user);
+            UIManager.Instance.ShowHomepage();
+        }, err => Debug.LogError("Auto-login DB fetch failed: " + err));
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  DATABASE — USER DOCUMENT
     // ══════════════════════════════════════════════════════════════════════════
@@ -160,6 +173,7 @@ public class FirebaseManager : MonoBehaviour
         _onLoadUserError = onError;
         FirebaseDatabase.GetJSON($"users/{CurrentUserId}", gameObject.name, "OnLoadUserSuccess", "OnDatabaseError");
     }
+
     public void OnLoadUserSuccess(string json)
     {
         if (string.IsNullOrEmpty(json) || json == "null") { _onLoadUserError?.Invoke("User not found."); return; }
@@ -171,39 +185,88 @@ public class FirebaseManager : MonoBehaviour
         if (!AssertAuthenticated(onError)) return;
         string jsonValue = JsonConvert.SerializeObject(value);
         FirebaseDatabase.UpdateJSON($"users/{CurrentUserId}", $"{{\"{fieldName}\": {jsonValue}}}", gameObject.name, "OnUpdateSuccess", "OnDatabaseError");
-        onSuccess?.Invoke(); // Simplified callback for WebGL
+        onSuccess?.Invoke();
     }
 
     public void OnUpdateSuccess(string info) { }
     public void OnDatabaseError(string err) { Debug.LogError($"Database Error: {err}"); }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  SCORING — SIMULATION / QUIZ / SURVEY
+    //  SCORING — SIMULATION / QUIZ (Highest Score Only)
     // ══════════════════════════════════════════════════════════════════════════
+
+    private string _pendingModuleId;
+    private string _pendingModuleType;
+    private int _pendingModulePoints;
+    private User _pendingUser;
+    private Action<User> _pendingScoreSuccess;
+    private Action<string> _pendingScoreError;
 
     public void RecordSimulationCompletion(string simulationId, int pointsEarned, User currentUser, Action<User> onSuccess, Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
 
-        currentUser.score += pointsEarned; // Assuming this is a new score for brevity in WebGL port
-        var entry = new CompletedModule(simulationId, "scenario", pointsEarned);
+        _pendingModuleId = simulationId;
+        _pendingModuleType = "scenario";
+        _pendingModulePoints = pointsEarned;
+        _pendingUser = currentUser;
+        _pendingScoreSuccess = onSuccess;
+        _pendingScoreError = onError;
 
-        string entryJson = JsonConvert.SerializeObject(entry);
-        FirebaseDatabase.UpdateJSON($"users/{CurrentUserId}/completedSimulations", $"{{\"{simulationId}\": {entryJson}}}", gameObject.name, "OnUpdateSuccess", "OnDatabaseError");
-        UpdateUserField("score", currentUser.score, () => onSuccess(currentUser), onError);
+        // Fetch the user's existing score for this scenario before adding points
+        FirebaseDatabase.GetJSON($"users/{CurrentUserId}/completedSimulations/{simulationId}", gameObject.name, "OnCheckScoreSuccess", "OnDatabaseError");
     }
 
     public void RecordQuizCompletion(string quizId, int pointsEarned, int correctAnswers, int totalQuestions, Dictionary<string, string> answers, User currentUser, Action<User> onSuccess, Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
 
-        currentUser.score += pointsEarned;
-        var entry = new CompletedModule(quizId, "quiz", pointsEarned);
-        string entryJson = JsonConvert.SerializeObject(entry);
+        _pendingModuleId = quizId;
+        _pendingModuleType = "quiz";
+        _pendingModulePoints = pointsEarned;
+        _pendingUser = currentUser;
+        _pendingScoreSuccess = onSuccess;
+        _pendingScoreError = onError;
 
-        FirebaseDatabase.UpdateJSON($"users/{CurrentUserId}/completedQuizzes", $"{{\"{quizId}\": {entryJson}}}", gameObject.name, "OnUpdateSuccess", "OnDatabaseError");
-        UpdateUserField("score", currentUser.score, () => onSuccess(currentUser), onError);
+        // Fetch the user's existing score for this quiz before adding points
+        FirebaseDatabase.GetJSON($"users/{CurrentUserId}/completedQuizzes/{quizId}", gameObject.name, "OnCheckScoreSuccess", "OnDatabaseError");
     }
+
+    public void OnCheckScoreSuccess(string json)
+    {
+        int oldScore = 0;
+
+        // Parse the existing score if they have played this before
+        if (!string.IsNullOrEmpty(json) && json != "null")
+        {
+            var entry = JsonConvert.DeserializeObject<CompletedModule>(json);
+            if (entry != null) oldScore = entry.pointsEarned;
+        }
+
+        // Only add points and save if they beat their previous high score
+        if (_pendingModulePoints > oldScore)
+        {
+            int scoreDifference = _pendingModulePoints - oldScore;
+            _pendingUser.score += scoreDifference;
+
+            var entry = new CompletedModule(_pendingModuleId, _pendingModuleType, _pendingModulePoints);
+            string entryJson = JsonConvert.SerializeObject(entry);
+            string dbPath = _pendingModuleType == "quiz" ? "completedQuizzes" : "completedSimulations";
+
+            FirebaseDatabase.UpdateJSON($"users/{CurrentUserId}/{dbPath}", $"{{\"{_pendingModuleId}\": {entryJson}}}", gameObject.name, "OnUpdateSuccess", "OnDatabaseError");
+            UpdateUserField("score", _pendingUser.score, () => _pendingScoreSuccess?.Invoke(_pendingUser), _pendingScoreError);
+        }
+        else
+        {
+            // The score was lower than or equal to their best. Do nothing but return success.
+            Debug.Log($"[FirebaseManager] Score {_pendingModulePoints} did not beat previous high score {oldScore}. Points not added.");
+            _pendingScoreSuccess?.Invoke(_pendingUser);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  SURVEY & CHEATSHEET
+    // ══════════════════════════════════════════════════════════════════════════
 
     public void RecordPulseSurvey(string surveyType, Dictionary<string, object> answers, User currentUser, Action<User> onSuccess, Action<string> onError)
     {
@@ -218,7 +281,6 @@ public class FirebaseManager : MonoBehaviour
     public void RecordCheatsheetAccess(string cheatsheetId, Action onSuccess = null, Action<string> onError = null)
     {
         if (!AssertAuthenticated(onError ?? (_ => { }))) return;
-        // In WebGL, simple metrics are often sent as a fire-and-forget push.
         FirebaseDatabase.PushJSON($"playbook/cheatsheet_access/{CurrentUserId}/{cheatsheetId}", "{\"accessedAt\": " + DateTimeOffset.UtcNow.ToUnixTimeSeconds() + "}", gameObject.name, "OnUpdateSuccess", "OnDatabaseError");
         onSuccess?.Invoke();
     }

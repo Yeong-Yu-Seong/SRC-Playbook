@@ -1,14 +1,29 @@
 fileFormatVersion: 2
-guid: d50df99f89d8d8a4ca6aa3c8f5764c01
+guid: 8344bf896f9b8bc4b99bb422292fd2ec
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GLB_UV1001
+    second: {fileID: 2100000, guid: c66bd56206975704398c9c88bb763909, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GLB_UV1002
+    second: {fileID: 2100000, guid: 5c2f29467a77b6041a9a709f05b541e3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GLB_UV1011
+    second: {fileID: 2100000, guid: 9f96e442dc9542e4c9b7aadcf5966a01, type: 2}
   materials:
     materialImportMode: 2
-    materialName: 0
+    materialName: 1
     materialSearch: 1
-    materialLocation: 1
+    materialLocation: 0
   animations:
     legacyGenerateAnimations: 4
     bakeSimulation: 0
