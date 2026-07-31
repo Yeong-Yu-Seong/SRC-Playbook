@@ -111,7 +111,7 @@ public class DNDRanking : MonoBehaviour
     {
         if (submitButton != null) submitButton.interactable = false;
 
-        bool allCorrect = true;
+        int correctCount = 0;
         Dictionary<string, string> capturedAnswers = new();
 
         foreach (Transform slotTransform in slotsContainer)
@@ -127,16 +127,17 @@ public class DNDRanking : MonoBehaviour
 
             capturedAnswers[questionId] = selectedChoiceId;
 
-            if (q == null || selectedChoiceId != q.correctAnswerId)
+            if (q != null && selectedChoiceId == q.correctAnswerId)
             {
-                allCorrect = false;
+                correctCount++;
             }
         }
 
-        ShowFeedback(allCorrect, capturedAnswers);
+        bool allCorrect = correctCount == _quizData.questions.Count;
+        ShowFeedback(allCorrect, capturedAnswers, correctCount);
     }
 
-    private void ShowFeedback(bool isCorrect, Dictionary<string, string> capturedAnswers)
+    private void ShowFeedback(bool isCorrect, Dictionary<string, string> capturedAnswers, int correctCount)
     {
         feedbackPanel.SetActive(true);
         feedbackActionButton.onClick.RemoveAllListeners();
@@ -144,24 +145,28 @@ public class DNDRanking : MonoBehaviour
         if (isCorrect)
         {
             feedbackTitleText.text = "Excellent!";
-            feedbackMessageText.text = _quizData.correctFeedbackText;
-
-            feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
-            feedbackActionButton.onClick.AddListener(() => EndGame(capturedAnswers));
         }
         else
         {
             feedbackTitleText.text = "Not quite.";
-            feedbackMessageText.text = _quizData.incorrectFeedbackText;
-
-            feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try Again";
-            feedbackActionButton.onClick.AddListener(() => EndGame(capturedAnswers));
         }
+
+        // Calculate total points earned for the board
+        int ptsEach = ScoreManager.Instance.pointsPerCorrectDragDrop;
+        bool perfect = correctCount == _quizData.questions.Count;
+        int pointsEarned = (correctCount * ptsEach) + (perfect ? ScoreManager.Instance.perfectScoreBonus : 0);
+
+        string pointsString = pointsEarned > 0 ? $"<color=#2CA060><b>+{pointsEarned} Points</b></color>" : $"<color=#808080><b>+0 Points</b></color>";
+        string baseMessage = isCorrect ? _quizData.correctFeedbackText : _quizData.incorrectFeedbackText;
+
+        feedbackMessageText.text = baseMessage + $"\n\n{pointsString}";
+
+        feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
+        feedbackActionButton.onClick.AddListener(() => EndGame(capturedAnswers, correctCount));
     }
 
-    private void EndGame(Dictionary<string, string> capturedAnswers)
+    private void EndGame(Dictionary<string, string> capturedAnswers, int correctCount)
     {
-        int correctCount = _quizData.questions.Count; // If they got here, they got 100%
         int totalCount = _quizData.questions.Count;
 
         ScoreManager.Instance.SubmitDragDropScore(

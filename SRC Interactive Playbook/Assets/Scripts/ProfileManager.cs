@@ -1,7 +1,7 @@
 /*
     Author: Yeong Yu Seong
     Date: 1 July 2026
-    Last Updated: 11 July 2026
+    Last Updated: 28 July 2026 (By Kwek Sin En)
     Description: This script manages the user's profile information, including displaying, editing, and saving changes to the profile data.
                  It interacts with Firebase Realtime Database and Firebase Authentication to retrieve and update user information.
 */
@@ -36,15 +36,8 @@ public class ProfileManager : MonoBehaviour
 
     private void Awake()
     {
-        if (profileManagerInstance == null)
-        {
-            profileManagerInstance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        profileManagerInstance = this;
+     
     }
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -135,8 +128,7 @@ public class ProfileManager : MonoBehaviour
             () => Debug.Log("Username updated"),
             error => Debug.LogError(error));
 
-        // Close the prompt and switch back to the profile panel
-        prompt.SetActive(false);
+        // Switch back to the profile panel
         profilePanel.SetActive(true);
         editPanel.SetActive(false);
         errorText.text = ""; // Clear any error messages after saving changes

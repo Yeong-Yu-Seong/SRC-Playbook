@@ -25,8 +25,8 @@ public class FactVsOpinion : MonoBehaviour
     public Button[] optionButtons;     // [0]=Fact/Effective, [1]=Opinion/NeedsImprovement
     public GameObject gamePanel;
 
-    [Header("Mascot Assets")]
-    [SerializeField] private Sprite[] mascotSprites;  // [0]=neutral, [1]=feedback
+    //[Header("Mascot Assets")]
+    //[SerializeField] private Sprite[] mascotSprites;  // [0]=neutral, [1]=feedback
 
     [Header("Feedback Panel")]
     public GameObject feedbackPanel;
@@ -71,8 +71,8 @@ public class FactVsOpinion : MonoBehaviour
 
     private void DisplayQuestion()
     {
-        if (mascotImage != null && mascotSprites.Length > 0)
-            mascotImage.sprite = mascotSprites[0]; // Neutral
+        //if (mascotImage != null && mascotSprites.Length > 0)
+        //    mascotImage.sprite = mascotSprites[0]; // Neutral
 
         var q = _quizData.questions[_questionIndex];
         if (statementText != null) statementText.text = q.prompt;
@@ -116,8 +116,8 @@ public class FactVsOpinion : MonoBehaviour
             btn.colors = cb;
         }
 
-        if (mascotImage != null && mascotSprites.Length > 1)
-            mascotImage.sprite = mascotSprites[1];
+        //if (mascotImage != null && mascotSprites.Length > 1)
+        //    mascotImage.sprite = mascotSprites[1];
 
         ShowFeedback(isCorrect, q);
     }
@@ -129,8 +129,14 @@ public class FactVsOpinion : MonoBehaviour
 
         feedbackTitleText.text = isCorrect ? "Correct!" : "Incorrect.";
 
+        // Calculate points
+        int pts = isCorrect ? ScoreManager.Instance.pointsPerCorrectFactsOpinions : 0;
+        string pointsString = pts > 0 ? $"<color=#2CA060><b>+{pts} Points</b></color>" : $"<color=#808080><b>+0 Points</b></color>";
+
         string fallbackText = isCorrect ? "Well done!" : "Not quite.";
-        feedbackMessageText.text = !string.IsNullOrEmpty(q.feedbackText) ? q.feedbackText : fallbackText;
+        string baseMessage = !string.IsNullOrEmpty(q.feedbackText) ? q.feedbackText : fallbackText;
+
+        feedbackMessageText.text = baseMessage + $"\n\n{pointsString}";
 
         feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
         feedbackActionButton.onClick.AddListener(() =>

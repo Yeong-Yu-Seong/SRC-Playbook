@@ -155,24 +155,25 @@ public class DragAndDrop : MonoBehaviour
 
         if (allCorrect)
         {
-            feedbackTitleText.text = "✅ Excellent!";
-            feedbackMessageText.text = _quizData.correctFeedbackText;
-
-            feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
-            feedbackActionButton.onClick.AddListener(() => EndGame());
+            feedbackTitleText.text = "Excellent!";
         }
         else
         {
-            feedbackTitleText.text = "❌ Not quite.";
-            feedbackMessageText.text = _quizData.incorrectFeedbackText;
-
-            feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try Again";
-            feedbackActionButton.onClick.AddListener(() =>
-            {
-                feedbackPanel.SetActive(false);
-                BuildMatchingBoard();
-            });
+            feedbackTitleText.text = "Not quite.";
         }
+
+        // Calculate total points earned for the board
+        int ptsEach = ScoreManager.Instance.pointsPerCorrectDragDrop;
+        bool perfect = _correctCount == _quizData.questions.Count;
+        int pointsEarned = (_correctCount * ptsEach) + (perfect ? ScoreManager.Instance.perfectScoreBonus : 0);
+
+        string pointsString = pointsEarned > 0 ? $"<color=#2CA060><b>+{pointsEarned} Points</b></color>" : $"<color=#808080><b>+0 Points</b></color>";
+        string baseMessage = allCorrect ? _quizData.correctFeedbackText : _quizData.incorrectFeedbackText;
+
+        feedbackMessageText.text = baseMessage + $"\n\n{pointsString}";
+
+        feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
+        feedbackActionButton.onClick.AddListener(() => EndGame());
     }
 
     private void EndGame()

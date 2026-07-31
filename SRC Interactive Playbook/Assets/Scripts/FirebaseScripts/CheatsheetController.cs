@@ -63,18 +63,18 @@ public class CheatsheetController : MonoBehaviour
             if (isGivingFeedback)
             {
                 title.text = "Giving Feedback: 4 Simple Steps";
-                clarifyText.text = "Gather objective facts. Review attendance records, work outputs, and specific examples before the conversation. Avoid assumptions.";
-                addressText.text = "Deliver feedback respectfully. Focus on observable behaviours and their operational impact — never personality or character.";
-                respondText.text = "Listen actively to the employee's perspective. Collaborate on an actionable improvement plan with measurable goals and support.";
-                enhanceText.text = "Follow up consistently. Recognise progress, reinforce positive change, and maintain psychological safety throughout.";
+                clarifyText.text = "• Gather objective facts.\n• Review attendance records, work outputs, and specific examples. \n• Avoid assumptions.";
+                addressText.text = "• Deliver feedback respectfully.\n• Focus on observable behaviours and their operational impact, never personality or character.";
+                respondText.text = "• Listen actively to their perspective.\n• Collaborate on an actionable improvement plan with measurable goals and support.";
+                enhanceText.text = "• Follow up consistently.\n• Recognise progress, reinforce positive change, and maintain psychological safety throughout.";
             }
             else
             {
                 title.text = "Receiving Feedback: 4 Simple Steps";
-                clarifyText.text = "Seek to understand the feedback without defensiveness. Ask for specific examples of how your leadership impacts the team.";
-                addressText.text = "Acknowledge the feedback professionally. Maintain open body language and a calm tone.";
-                respondText.text = "Ask clarifying questions to build a shared understanding. Collaborate on actionable next steps for your leadership growth.";
-                enhanceText.text = "Implement agreed actions. Proactively seek follow-up feedback to ensure your adjustments are effective.";
+                clarifyText.text = "• Seek to understand the feedback without defensiveness.\n• Ask for specific examples of how your leadership impacts the team.";
+                addressText.text = "• Acknowledge the feedback professionally.\n• Maintain open body language and a calm tone.";
+                respondText.text = "• Ask clarifying questions to build a shared understanding.\n• Collaborate on actionable next steps for your leadership growth.";
+                enhanceText.text = "• Implement agreed actions.\n• Proactively seek follow-up feedback to ensure your adjustments are effective.";
             }
         }
         else // Employee Track
@@ -82,18 +82,18 @@ public class CheatsheetController : MonoBehaviour
             if (isGivingFeedback)
             {
                 title.text = "Giving Feedback: 4 Simple Steps";
-                clarifyText.text = "Identify specific behaviours you observed (not personality traits). Understand the context before speaking up.";
-                addressText.text = "Be constructive — your goal is improvement, not blame. Focus on the operational or team impact of those behaviours.";
-                respondText.text = "Allow your peer or manager to share their perspective. Listen fully without immediately reacting.";
-                enhanceText.text = "Keep the conversation ongoing, not a one-off. Recognise progress and continue collaborating on solutions.";
+                clarifyText.text = "• Identify specific behaviours you observed (not personality).\n• Understand the context before speaking up.";
+                addressText.text = "• Be constructive; your goal is improvement, not blame.\n• Focus on the operational or team impact of those behaviours.";
+                respondText.text = "• Allow your peer or manager to share their perspective.\n• Listen fully without immediately reacting.";
+                enhanceText.text = "• Keep the conversation ongoing, not a one-off.\n• Recognise progress and continue collaborating on solutions.";
             }
             else
             {
                 title.text = "Receiving Feedback: 4 Simple Steps";
-                clarifyText.text = "Prepare before a feedback conversation. Gather specific examples of behaviours, understand the context, and keep an open mind.";
-                addressText.text = "Listen actively and stay calm. Focus on behaviours and their impact, not on personal judgement.";
-                respondText.text = "Ask clarifying questions. Acknowledge the feedback and collaborate on solutions and next steps.";
-                enhanceText.text = "Follow through on agreed actions. Seek ongoing feedback and celebrate progress.";
+                clarifyText.text = "• Prepare before a feedback conversation.\n• Gather specific examples of behaviours, understand, and keep an open mind.";
+                addressText.text = "• Listen actively and stay calm.\n• Focus on behaviours and their impact, not on personal judgement.";
+                respondText.text = "• Ask clarifying questions.\n• Acknowledge the feedback and collaborate on solutions and next steps.";
+                enhanceText.text = "• Follow through on agreed actions.\n• Seek ongoing feedback and celebrate progress.";
             }
         }
     }

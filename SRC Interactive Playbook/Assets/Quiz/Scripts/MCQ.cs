@@ -22,7 +22,7 @@ public class MCQ : MonoBehaviour
     [Header("Question UI")]
     public TextMeshProUGUI statementText;
     public TextMeshProUGUI questionNumberText;
-    public Image timerCountdown;        // fill image, 0–1
+    //public Image timerCountdown;        // fill image, 0–1
     public Button[] optionButtons;
     public TextMeshProUGUI[] optionTexts;
     public Button submitButton;         // for MultiMCQ only
@@ -60,7 +60,7 @@ public class MCQ : MonoBehaviour
     {
         if (!_isGameActive) return;
         _timer -= Time.deltaTime;
-        if (timerCountdown != null) timerCountdown.fillAmount = _timer / TimerDuration;
+        //if (timerCountdown != null) timerCountdown.fillAmount = _timer / TimerDuration;
         if (_timer <= 0f) EndGame();
     }
 
@@ -96,8 +96,8 @@ public class MCQ : MonoBehaviour
 
         var q = _quizData.questions[_questionIndex];
         if (statementText != null) statementText.text = q.prompt;
-        if (questionNumberText != null) questionNumberText.text = $"Q{_questionIndex + 1}/{_quizData.questions.Count}";
-        if (timerCountdown != null) timerCountdown.fillAmount = 1f;
+        if (questionNumberText != null) questionNumberText.text = $"Qn {_questionIndex + 1}/{_quizData.questions.Count}";
+        //if (timerCountdown != null) timerCountdown.fillAmount = 1f;
 
         for (int i = 0; i < optionButtons.Length; i++)
         {
@@ -199,10 +199,16 @@ public class MCQ : MonoBehaviour
         feedbackPanel.SetActive(true);
         feedbackActionButton.onClick.RemoveAllListeners();
 
-        feedbackTitleText.text = isCorrect ? "✅ Correct!" : "❌ Incorrect.";
+        feedbackTitleText.text = isCorrect ? "Correct!" : "Incorrect.";
+
+        // Calculate points
+        int pts = isCorrect ? ScoreManager.Instance.pointsPerCorrectMCQ : 0;
+        string pointsString = pts > 0 ? $"<color=#2CA060><b>+{pts} Points</b></color>" : $"<color=#808080><b>+0 Points</b></color>";
 
         string fallbackText = isCorrect ? "Well done!" : "Not quite.";
-        feedbackMessageText.text = !string.IsNullOrEmpty(q.feedbackText) ? q.feedbackText : fallbackText;
+        string baseMessage = !string.IsNullOrEmpty(q.feedbackText) ? q.feedbackText : fallbackText;
+
+        feedbackMessageText.text = baseMessage + $"\n\n{pointsString}";
 
         feedbackActionButton.GetComponentInChildren<TextMeshProUGUI>().text = "Continue";
         feedbackActionButton.onClick.AddListener(() =>
