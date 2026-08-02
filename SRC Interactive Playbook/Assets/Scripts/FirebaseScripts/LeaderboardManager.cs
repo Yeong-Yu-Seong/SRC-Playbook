@@ -20,7 +20,7 @@ public class LeaderboardManager : MonoBehaviour
     public Transform desktopLBContainer;
 
     [Header("Settings")]
-    public int displayCount = 10;
+    public int displayCount = 30;
 
     [Header("Status Labels (optional)")]
     [SerializeField] private TMP_Text statusText;

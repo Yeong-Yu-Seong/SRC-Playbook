@@ -17,6 +17,7 @@ public class CheatsheetController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI addressText;
     [SerializeField] private TextMeshProUGUI respondText;
     [SerializeField] private TextMeshProUGUI enhanceText;
+    [SerializeField] private TextMeshProUGUI rememberText;
 
     [Header("Visual Feedback")]
     [SerializeField] private Color activeTabColor = new Color(0.75f, 0.16f, 0.11f); // Red Cross Red
@@ -67,6 +68,7 @@ public class CheatsheetController : MonoBehaviour
                 addressText.text = "• Deliver feedback respectfully.\n• Focus on observable behaviours and their operational impact, never personality or character.";
                 respondText.text = "• Listen actively to their perspective.\n• Collaborate on an actionable improvement plan with measurable goals and support.";
                 enhanceText.text = "• Follow up consistently.\n• Recognise progress, reinforce positive change, and maintain psychological safety throughout.";
+                rememberText.text = "Feedback is a gift, not an attack.";
             }
             else
             {
@@ -75,6 +77,7 @@ public class CheatsheetController : MonoBehaviour
                 addressText.text = "• Acknowledge the feedback professionally.\n• Maintain open body language and a calm tone.";
                 respondText.text = "• Ask clarifying questions to build a shared understanding.\n• Collaborate on actionable next steps for your leadership growth.";
                 enhanceText.text = "• Implement agreed actions.\n• Proactively seek follow-up feedback to ensure your adjustments are effective.";
+                rememberText.text = "Growth starts where comfort ends.";
             }
         }
         else // Employee Track
@@ -86,14 +89,16 @@ public class CheatsheetController : MonoBehaviour
                 addressText.text = "• Be constructive; your goal is improvement, not blame.\n• Focus on the operational or team impact of those behaviours.";
                 respondText.text = "• Allow your peer or manager to share their perspective.\n• Listen fully without immediately reacting.";
                 enhanceText.text = "• Keep the conversation ongoing, not a one-off.\n• Recognise progress and continue collaborating on solutions.";
+                rememberText.text = "Feedback is a gift, not an attack.";
             }
             else
             {
                 title.text = "Receiving Feedback: 4 Simple Steps";
-                clarifyText.text = "• Prepare before a feedback conversation.\n• Gather specific examples of behaviours, understand, and keep an open mind.";
+                clarifyText.text = "• Prepare before a feedback conversation.\n• Gather examples of behaviours, understand, and keep an open mind.";
                 addressText.text = "• Listen actively and stay calm.\n• Focus on behaviours and their impact, not on personal judgement.";
                 respondText.text = "• Ask clarifying questions.\n• Acknowledge the feedback and collaborate on solutions and next steps.";
                 enhanceText.text = "• Follow through on agreed actions.\n• Seek ongoing feedback and celebrate progress.";
+                rememberText.text = "Growth starts where comfort ends.";
             }
         }
     }
