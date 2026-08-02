@@ -11,7 +11,7 @@ public class ScenarioIntroUI : MonoBehaviour
     [Header("References")]
     [SerializeField] private GameObject panel;
     [SerializeField] private TextMeshProUGUI exhibitNumberText;
-    [SerializeField] private RawImage thumbnailImage;
+    [SerializeField] private RawImage thumbnail;
 
     [Tooltip("Optional: Assign a Frame Image here if your Intro UI also uses frames.")]
     [SerializeField] private Image frameImage;
@@ -32,17 +32,17 @@ public class ScenarioIntroUI : MonoBehaviour
     {
         _onEnterClicked = onEnterClicked;
 
+        if (panel != null) panel.SetActive(true);
+
         if (exhibitNumberText != null) exhibitNumberText.text = scenario.exhibitNumber;
         if (titleText != null) titleText.text = scenario.title;
         if (outlineDescriptionText != null) outlineDescriptionText.text = scenario.outlineDescription;
 
-        // 1. Load Thumbnail (Dynamic URL from Firebase Storage)
-        if (thumbnailImage != null && !string.IsNullOrEmpty(scenario.thumbnailUrl))
+        if (thumbnail != null && !string.IsNullOrEmpty(scenario.thumbnailUrl))
         {
-            StartCoroutine(LoadTextureFromUrl(scenario.thumbnailUrl, thumbnailImage));
+            StartCoroutine(LoadTextureFromUrl(scenario.thumbnailUrl, thumbnail));
         }
 
-        // 2. Load Local Frame Sprite based on Admin Dashboard selection
         if (frameImage != null && !string.IsNullOrEmpty(scenario.frameUrl))
         {
             Sprite loadedFrame = Resources.Load<Sprite>($"Frames/{scenario.frameUrl}");
@@ -55,8 +55,6 @@ public class ScenarioIntroUI : MonoBehaviour
                 Debug.LogWarning($"[ScenarioIntroUI] Could not find frame sprite: Resources/Frames/{scenario.frameUrl}");
             }
         }
-
-        if (panel != null) panel.SetActive(true);
     }
 
     public void Hide()

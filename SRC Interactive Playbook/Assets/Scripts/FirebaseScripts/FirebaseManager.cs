@@ -271,6 +271,13 @@ public class FirebaseManager : MonoBehaviour
     public void RecordPulseSurvey(string surveyType, Dictionary<string, object> answers, User currentUser, Action<User> onSuccess, Action<string> onError)
     {
         if (!AssertAuthenticated(onError)) return;
+
+        // 1. Save the actual survey answers using PostJSON (which acts as a direct .set() in WebGL)
+        // UpdateJSON can fail silently when passing deeply nested JSON strings via the WebGL bridge.
+        string answersJson = JsonConvert.SerializeObject(new { answers = answers });
+        FirebaseDatabase.PostJSON($"playbook/surveys/{CurrentUserId}/{surveyType}", answersJson, gameObject.name, "OnUpdateSuccess", "OnDatabaseError");
+
+        // 2. Update the boolean flags on the user's profile
         string flagField = surveyType == "pre_survey" ? "hasCompletedPreSurvey" : "hasCompletedPostSurvey";
         if (surveyType == "pre_survey") currentUser.hasCompletedPreSurvey = true;
         else currentUser.hasCompletedPostSurvey = true;
