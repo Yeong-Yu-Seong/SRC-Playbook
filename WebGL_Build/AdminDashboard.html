@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CAREPlus Admin Dashboard</title>
+  <title>Red Cross Playbook — Admin Dashboard</title>
 
-  <!-- Firebase SDK v9 compat -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   
-  <!-- Chart.js for Data Visualisation -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -198,6 +196,10 @@
     .toast.error { background: var(--red); }
     @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text3); margin-bottom: 24px; font-weight: 500; }
+    .breadcrumb a { color: var(--red); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    
     .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
     .config-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); padding: 24px; }
     .config-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; box-shadow: 0 12px 48px rgba(0,0,0,.06); padding: 48px; max-width: 540px; width: 100%; }
@@ -206,11 +208,10 @@
 </head>
 <body>
 
-  <!-- CONFIG SCREEN -->
   <div id="configScreen" class="config-screen">
     <div class="config-card">
       <div style="display:flex; align-items:center; gap:16px; margin-bottom:32px;">
-        <div class="cross">+</div>
+        <img src="TemplateData/Logo.png" alt="Playbook Logo" style="max-height: 48px; object-fit: contain; border-radius: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div>
           <h2 style="margin-bottom:2px">Playbook Admin</h2>
           <p style="margin:0;font-size:13px;color:var(--text3)">Singapore Red Cross</p>
@@ -229,21 +230,19 @@
     </div>
   </div>
 
-  <!-- MAIN APP SHELL -->
   <div id="appShell" class="app" style="display:none">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="cross">+</div>
+        <img src="TemplateData/Logo.png" alt="Playbook Logo" style="max-height: 48px; object-fit: contain; border-radius: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <h1>Playbook Admin</h1>
         <p>Singapore Red Cross</p>
       </div>
       <nav class="sidebar-nav">
         <div class="nav-section">
           <div class="nav-section-label">Content</div>
-          <div class="nav-item active" onclick="showPage('scenarios')" id="nav-scenarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Scenarios</div>
+          <div class="nav-item active" onclick="showPage('overview')" id="nav-overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Analytics Overview</div>
+          <div class="nav-item" onclick="showPage('scenarios')" id="nav-scenarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Scenarios</div>
           <div class="nav-item" onclick="showPage('cheatsheets')" id="nav-cheatsheets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> AR Cheatsheets</div>
-          <div class="nav-item" onclick="showPage('overview')" id="nav-overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Analytics Overview</div>
         </div>
         <div class="nav-section">
           <div class="nav-section-label">Learner Data</div>
@@ -265,7 +264,7 @@
 
     <div class="main">
       <div class="topbar">
-        <span class="topbar-title" id="topbarTitle">Scenarios</span>
+        <span class="topbar-title" id="topbarTitle">Analytics Overview</span>
         <div class="topbar-right">
           <span id="dbIndicator" style="font-size:12px;font-weight:500;color:var(--text3);display:flex;align-items:center;gap:8px">
             <span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;box-shadow: 0 0 8px var(--green);"></span>
@@ -275,25 +274,66 @@
         </div>
       </div>
 
-      <!-- PAGE: Scenarios -->
-      <div id="page-scenarios" class="page active">
+      <div id="page-overview" class="page active">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h2>Analytics Overview</h2>
+            <p>Data visualization and actionable insights into Playbook usage.</p>
+          </div>
+        </div>
+        
+        <div class="stats-row" id="overviewStats"></div>
+
+        <div class="insight-box" id="insightsContainer" style="display:none;">
+          <div class="insight-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <h2 style="font-size:18px;">Actionable Insights: Modules Needing Review</h2>
+          </div>
+          <p style="color:var(--red-dark); font-size:14px; margin-bottom:16px;">The following modules have an average correct-answer rate below <strong>70%</strong>. Consider editing the content or adding supplementary learning units for these topics.</p>
+          <div class="insight-list" id="badModulesList"></div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="card">
+            <div class="card-header"><h3>360 Feedback Readiness</h3></div>
+            <div class="card-body">
+              <div class="chart-container"><canvas id="readinessChart"></canvas></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Learner Tracks</h3></div>
+            <div class="card-body">
+              <div class="chart-container"><canvas id="trackChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Module Popularity (Completions)</h3></div>
+          <div class="card-body">
+            <div class="chart-container" style="height:320px"><canvas id="popularityChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-scenarios" class="page">
         <div class="page-header">
           <div class="page-header-left">
             <h2>Learning Scenarios</h2>
             <p>Manage all interactive modules and linked knowledge checks.</p>
           </div>
           <div class="page-header-actions">
+            <button class="btn btn-secondary" onclick="refreshScenarios()">Refresh</button>
             <button class="btn btn-primary" onclick="createNewScenario()">+ New Scenario</button>
           </div>
         </div>
         <div id="scenarioListContainer"></div>
       </div>
 
-      <!-- PAGE: Scenario Editor -->
       <div id="page-editor" class="page">
         <div class="breadcrumb">
           <a onclick="showPage('scenarios')">Scenarios</a>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg style="width: 16px; height: 16px; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
           <span id="editorBreadcrumb">New Scenario</span>
         </div>
         <div class="page-header">
@@ -398,7 +438,6 @@
         </div>
       </div>
 
-      <!-- PAGE: AR Cheatsheets -->
       <div id="page-cheatsheets" class="page">
         <div class="page-header">
           <div class="page-header-left">
@@ -412,51 +451,6 @@
         <div id="cheatsheetListContainer" class="scenario-grid"></div>
       </div>
 
-      <!-- PAGE: Analytics Overview -->
-      <div id="page-overview" class="page">
-        <div class="page-header">
-          <div class="page-header-left">
-            <h2>Analytics Overview</h2>
-            <p>Data visualization and actionable insights into Playbook usage.</p>
-          </div>
-        </div>
-        
-        <div class="stats-row" id="overviewStats"></div>
-
-        <!-- NEW: Actionable Insights / Low Performing LUs -->
-        <div class="insight-box" id="insightsContainer" style="display:none;">
-          <div class="insight-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            <h2 style="font-size:18px;">Actionable Insights: Modules Needing Review</h2>
-          </div>
-          <p style="color:var(--red-dark); font-size:14px; margin-bottom:16px;">The following modules have an average correct-answer rate below <strong>70%</strong>. Consider editing the content or adding supplementary learning units for these topics.</p>
-          <div class="insight-list" id="badModulesList"></div>
-        </div>
-
-        <div class="charts-grid">
-          <div class="card">
-            <div class="card-header"><h3>360 Feedback Readiness</h3></div>
-            <div class="card-body">
-              <div class="chart-container"><canvas id="readinessChart"></canvas></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><h3>Learner Tracks</h3></div>
-            <div class="card-body">
-              <div class="chart-container"><canvas id="trackChart"></canvas></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3>Module Popularity (Completions)</h3></div>
-          <div class="card-body">
-            <div class="chart-container" style="height:320px"><canvas id="popularityChart"></canvas></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAGE: Learner Progress -->
       <div id="page-users" class="page">
         <div class="page-header">
           <div class="page-header-left">
@@ -501,7 +495,6 @@
         </div>
       </div>
 
-      <!-- PAGE: Surveys -->
       <div id="page-surveys" class="page">
         <div class="page-header">
           <div class="page-header-left">
@@ -515,7 +508,6 @@
         <div id="surveysContainer"></div>
       </div>
 
-      <!-- PAGE: Settings -->
       <div id="page-settings" class="page">
         <div class="page-header">
           <div class="page-header-left">
@@ -540,7 +532,6 @@
     </div>
   </div>
 
-  <!-- MODALS -->
   <div class="modal-backdrop" id="partEditorModal">
     <div class="modal">
       <div class="modal-header">
@@ -621,7 +612,6 @@
 
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- JAVASCRIPT -->
   <script>
     let db = null;
     let ROOT = 'playbook';
@@ -678,6 +668,7 @@
       launchApp();
     }
 
+    // CHANGED: launchApp now defaults to 'overview' so the Analytics page shows first.
     function launchApp() {
       document.getElementById('configScreen').style.display = 'none';
       document.getElementById('appShell').style.display = 'flex';
@@ -934,7 +925,6 @@
         };
       });
 
-      // Default Sort
       sortUsersTable('safety', false); 
     }
 
@@ -1264,22 +1254,13 @@
       }
 
       if (!usersMap || Object.keys(usersMap).length === 0) return container.innerHTML = `<div class="empty-state">No users found.</div>`;
-      
       surveys = surveys || {};
 
       globalSurveys = Object.entries(usersMap).map(([uid, uInfo]) => {
         const data = surveys[uid] || {};
-        // Pass along the user's boolean flags for accurate status reporting
-        return { 
-            uid, 
-            name: uInfo.username || uInfo.email || uid, 
-            data,
-            hasPre: !!uInfo.hasCompletedPreSurvey,
-            hasPost: !!uInfo.hasCompletedPostSurvey
-        };
+        return { uid, name: uInfo.username || uInfo.email || uid, data, hasPre: !!uInfo.hasCompletedPreSurvey, hasPost: !!uInfo.hasCompletedPostSurvey };
       });
 
-      // Sort alphabetically for easier navigation
       globalSurveys.sort((a,b) => a.name.localeCompare(b.name));
 
       container.innerHTML = globalSurveys.map(item => `
@@ -1288,21 +1269,15 @@
           <div class="card-body" style="display:flex; gap:24px; flex-wrap:wrap;">
             ${['pre_survey', 'post_survey'].map(t => {
               const hasFlag = t === 'pre_survey' ? item.hasPre : item.hasPost;
-              
-              let html = `<div style="flex:1; min-width:280px; background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:24px;">
-                            <h4 style="margin-bottom:16px; font-size:14px;">${t.replace('_', ' ').toUpperCase()}</h4>`;
-              
+              let html = `<div style="flex:1; min-width:280px; background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:24px;"><h4 style="margin-bottom:16px; font-size:14px;">${t.replace('_', ' ').toUpperCase()}</h4>`;
               if (item.data[t] && item.data[t].answers) {
-                // The data exists and is valid
                 Object.entries(item.data[t].answers).forEach(([q,a]) => {
                    let cleanQ = q.replace(/_/g, ' ').replace('q1', 'Q1').replace('q2', 'Q2').replace('q3', 'Q3').replace('q4', 'Q4');
                    html += `<div style="margin-bottom:12px;"><div style="font-size:12px; font-weight:700; color:var(--text3); margin-bottom:4px; text-transform:capitalize;">${cleanQ}</div><div style="font-size:14px;">${a}</div></div>`
                 });
               } else if (hasFlag) {
-                // The boolean is true, but the actual answers node is missing
                 html += `<em style="color:var(--gold); font-weight:600;">Flagged as completed, but answer data is missing.</em>`;
               } else {
-                // Not completed, and boolean is false
                 html += `<em style="color:var(--text3)">Not completed</em>`;
               }
               return html + `</div>`;
@@ -1316,15 +1291,12 @@
       globalSurveys.forEach(item => {
         ['pre_survey', 'post_survey'].forEach(t => {
           if(item.data[t] && item.data[t].answers) {
-            Object.entries(item.data[t].answers).forEach(([q,a]) => {
-              csv += `"${item.name}","${t}","${q}","${a}"\n`;
-            });
+            Object.entries(item.data[t].answers).forEach(([q,a]) => { csv += `"${item.name}","${t}","${q}","${a}"\n`; });
           }
         });
       });
       const blob = new Blob([csv], { type: 'text/csv' });
-      const a = document.createElement('a');
-      a.href = window.URL.createObjectURL(blob); a.download = 'Survey_Responses.csv'; a.click();
+      const a = document.createElement('a'); a.href = window.URL.createObjectURL(blob); a.download = 'Survey_Responses.csv'; a.click();
     }
 
     // =========================================================================
